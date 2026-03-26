@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Удалить ОПК из отраслей</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a0e27;
+            color: #fff;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #dc2626;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1a1f3a;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🗑️ Удалить "ОПК" из отраслей</h1>
+    <p>Эта утилита удалит "ОПК" из коллекции industries в Firebase.</p>
+    <button onclick="deleteOPK()">🗑️ Удалить "ОПК"</button>
+    <div id="result"></div>
+
+    <script type="module">
+        import { db, collection, query, where, getDocs, deleteDoc, doc } from './firebase-init.js';
+
+        window.deleteOPK = async function() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '⏳ Поиск "ОПК" в базе данных...';
+            
+            try {
+                const industriesRef = collection(db, 'industries');
+                const q = query(industriesRef, where('name', '==', 'ОПК'));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    resultDiv.innerHTML = '✅ "ОПК" не найден в отраслях. Всё в порядке!';
+                    return;
+                }
+                
+                let deleted = 0;
+                for (const docSnapshot of snapshot.docs) {
+                    await deleteDoc(doc(db, 'industries', docSnapshot.id));
+                    deleted++;
+                }
+                
+                resultDiv.innerHTML = `✅ Успешно удалено документов: ${deleted}<br><br>Обновите главную страницу (Ctrl+F5) чтобы увидеть изменения.`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `❌ Ошибка: ${error.message}`;
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
