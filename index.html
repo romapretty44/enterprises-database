@@ -70,6 +70,15 @@
                 <h2 id="modalTitle">Добавить предприятие</h2>
                 
                 <div class="form-section">
+                    <label>🏢 ИНН организации</label>
+                    <div class="inn-section">
+                        <input type="text" id="enterpriseInn" placeholder="ИНН (10 или 12 цифр)" maxlength="12">
+                        <button type="button" id="loadFromEgrulBtn" class="load-egrul-btn">🔍 Загрузить из ЕГРЮЛ</button>
+                    </div>
+                    <small style="color: #9ca3af; display: block; margin-top: 5px;">Автоматическая загрузка данных из базы ЕГРЮЛ</small>
+                </div>
+
+                <div class="form-section">
                     <label>📝 Название предприятия *</label>
                     <input type="text" id="enterpriseName" required placeholder="Введите название...">
                 </div>
@@ -77,6 +86,32 @@
                 <div class="form-section">
                     <label>💼 Информация о предприятии</label>
                     <textarea id="enterpriseInfo" rows="6" placeholder="Опишите деятельность, продукцию, историю предприятия..."></textarea>
+                </div>
+                
+                <div class="form-section" id="legalInfoSection" style="display: none;">
+                    <label>⚖️ Юридическая информация</label>
+                    <div class="legal-info-grid">
+                        <div class="legal-info-item">
+                            <span class="legal-label">ОГРН:</span>
+                            <span id="legalOgrn">-</span>
+                        </div>
+                        <div class="legal-info-item">
+                            <span class="legal-label">Полное название:</span>
+                            <span id="legalFullName">-</span>
+                        </div>
+                        <div class="legal-info-item">
+                            <span class="legal-label">ОКВЭД:</span>
+                            <span id="legalOkved">-</span>
+                        </div>
+                        <div class="legal-info-item">
+                            <span class="legal-label">Юридический адрес:</span>
+                            <span id="legalAddress">-</span>
+                        </div>
+                        <div class="legal-info-item">
+                            <span class="legal-label">Дата регистрации:</span>
+                            <span id="legalRegDate">-</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="form-section">

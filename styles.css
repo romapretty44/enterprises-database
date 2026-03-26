@@ -922,6 +922,70 @@ footer {
     font-weight: 500;
 }
 
+/* ИНН и загрузка из ЕГРЮЛ */
+.inn-section {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.inn-section input {
+    flex: 1;
+}
+
+.load-egrul-btn {
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.load-egrul-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(16, 185, 129, 0.6);
+}
+
+.load-egrul-btn:disabled {
+    background: rgba(107, 114, 128, 0.5);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.legal-info-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    background: rgba(30, 35, 60, 0.4);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.legal-info-item {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 10px;
+    align-items: start;
+}
+
+.legal-label {
+    color: #9ca3af;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.legal-info-item span:last-child {
+    color: #d1d5db;
+    word-break: break-word;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     header {
@@ -971,5 +1035,18 @@ footer {
     
     .remove-product-btn {
         width: 100%;
+    }
+    
+    .inn-section {
+        flex-direction: column;
+    }
+    
+    .load-egrul-btn {
+        width: 100%;
+    }
+    
+    .legal-info-item {
+        grid-template-columns: 1fr;
+        gap: 5px;
     }
 }

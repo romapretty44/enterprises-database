@@ -6,6 +6,9 @@ const TRASH_COLLECTION = 'trash';
 const INDUSTRIES_COLLECTION = 'industries';
 const PRODUCTS_COLLECTION = 'products';
 const CATEGORIES_COLLECTION = 'categories';
+const DADATA_API_KEY = '2566ea2523ff5ec4a2f0fc93ff3ee1a00235b01a';
+const DADATA_API_URL = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party';
+
 let enterprises = [];
 let trashedEnterprises = [];
 let industries = [];
@@ -14,6 +17,7 @@ let categories = [];
 let editingId = null;
 let contactsCounter = 0;
 let productsCounter = 0;
+let currentLegalData = null; // Хранение юридических данных из ЕГРЮЛ
 
 // Проверка авторизации
 function checkAuth() {
@@ -47,6 +51,86 @@ document.getElementById('loginBtn').addEventListener('click', () => {
 document.getElementById('logoutBtn').addEventListener('click', () => {
     localStorage.removeItem('isAuthorized');
     checkAuth();
+});
+
+// Загрузка данных из ЕГРЮЛ через DaData API
+document.getElementById('loadFromEgrulBtn').addEventListener('click', async () => {
+    const inn = document.getElementById('enterpriseInn').value.trim();
+    
+    // Валидация ИНН
+    if (!inn) {
+        alert('Введите ИНН!');
+        return;
+    }
+    
+    if (!/^\d{10}$|^\d{12}$/.test(inn)) {
+        alert('ИНН должен содержать 10 или 12 цифр!');
+        return;
+    }
+    
+    const btn = document.getElementById('loadFromEgrulBtn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Загрузка...';
+    
+    try {
+        const response = await fetch(DADATA_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Token ${DADATA_API_KEY}`
+            },
+            body: JSON.stringify({ query: inn })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Ошибка API: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (!result.suggestions || result.suggestions.length === 0) {
+            alert('Организация с таким ИНН не найдена в ЕГРЮЛ');
+            return;
+        }
+        
+        const data = result.suggestions[0].data;
+        currentLegalData = data; // Сохраняем для последующего сохранения
+        
+        // Автозаполнение полей
+        document.getElementById('enterpriseName').value = data.name.short_with_opf || '';
+        
+        // Автозаполнение руководителя
+        if (data.management) {
+            document.getElementById('directorFullName').value = data.management.name || '';
+            document.getElementById('directorPosition').value = data.management.post || '';
+        }
+        
+        // Отображение юридической информации
+        document.getElementById('legalOgrn').textContent = data.ogrn || '-';
+        document.getElementById('legalFullName').textContent = data.name.full_with_opf || '-';
+        document.getElementById('legalOkved').textContent = data.okved 
+            ? `${data.okved} (${data.okved_type || ''})` 
+            : '-';
+        document.getElementById('legalAddress').textContent = data.address 
+            ? data.address.unrestricted_value 
+            : '-';
+        document.getElementById('legalRegDate').textContent = data.state && data.state.registration_date
+            ? new Date(data.state.registration_date).toLocaleDateString('ru-RU')
+            : '-';
+        
+        // Показываем секцию с юридической информацией
+        document.getElementById('legalInfoSection').style.display = 'block';
+        
+        alert('✅ Данные успешно загружены из ЕГРЮЛ!');
+        
+    } catch (error) {
+        console.error('Ошибка загрузки из ЕГРЮЛ:', error);
+        alert('Ошибка при загрузке данных из ЕГРЮЛ. Проверьте консоль.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
 });
 
 // Загрузка списка отраслей
@@ -488,6 +572,56 @@ window.viewEnterprise = async (id) => {
         });
         html += '</div>';
     }
+    
+    // Юридическая информация
+    if (ent.legalData) {
+        html += '<div class="view-section"><h3>⚖️ Юридическая информация</h3>';
+        html += '<div class="legal-info-grid" style="background: rgba(30, 35, 60, 0.4); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 12px; padding: 20px; display: grid; gap: 12px;">';
+        
+        if (ent.legalData.inn) {
+            html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
+                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">ИНН:</span>
+                <span style="color: #d1d5db;">${escapeHtml(ent.legalData.inn)}</span>
+            </div>`;
+        }
+        
+        if (ent.legalData.ogrn) {
+            html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
+                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">ОГРН:</span>
+                <span style="color: #d1d5db;">${escapeHtml(ent.legalData.ogrn)}</span>
+            </div>`;
+        }
+        
+        if (ent.legalData.fullName) {
+            html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
+                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">Полное название:</span>
+                <span style="color: #d1d5db;">${escapeHtml(ent.legalData.fullName)}</span>
+            </div>`;
+        }
+        
+        if (ent.legalData.okved) {
+            html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
+                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">ОКВЭД:</span>
+                <span style="color: #d1d5db;">${escapeHtml(ent.legalData.okved)}${ent.legalData.okvedType ? ` (${escapeHtml(ent.legalData.okvedType)})` : ''}</span>
+            </div>`;
+        }
+        
+        if (ent.legalData.address) {
+            html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
+                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">Юридический адрес:</span>
+                <span style="color: #d1d5db; word-break: break-word;">${escapeHtml(ent.legalData.address)}</span>
+            </div>`;
+        }
+        
+        if (ent.legalData.registrationDate) {
+            html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
+                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">Дата регистрации:</span>
+                <span style="color: #d1d5db;">${new Date(ent.legalData.registrationDate).toLocaleDateString('ru-RU')}</span>
+            </div>`;
+        }
+        
+        html += '</div></div>';
+    }
 
     content.innerHTML = html;
     modal.style.display = 'flex';
@@ -496,9 +630,11 @@ window.viewEnterprise = async (id) => {
 // Открыть модальное окно добавления
 document.getElementById('addBtn').addEventListener('click', () => {
     editingId = null;
+    currentLegalData = null;
     document.getElementById('modalTitle').textContent = 'Добавить предприятие';
     document.getElementById('enterpriseName').value = '';
     document.getElementById('enterpriseInfo').value = '';
+    document.getElementById('enterpriseInn').value = '';
     document.querySelectorAll('.industry-cb').forEach(cb => cb.checked = false);
     
     // Сброс руководителей
@@ -528,6 +664,9 @@ document.getElementById('addBtn').addEventListener('click', () => {
     // Сброс контактов
     document.getElementById('contactsList').innerHTML = '';
     contactsCounter = 0;
+    
+    // Скрыть юридическую информацию
+    document.getElementById('legalInfoSection').style.display = 'none';
     
     document.getElementById('modal').style.display = 'flex';
 });
@@ -637,6 +776,18 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         }
     });
 
+    // Юридическая информация (если загружена из ЕГРЮЛ)
+    const inn = document.getElementById('enterpriseInn').value.trim();
+    const legalData = currentLegalData ? {
+        inn: currentLegalData.inn,
+        ogrn: currentLegalData.ogrn,
+        fullName: currentLegalData.name?.full_with_opf,
+        okved: currentLegalData.okved,
+        okvedType: currentLegalData.okved_type,
+        address: currentLegalData.address?.unrestricted_value,
+        registrationDate: currentLegalData.state?.registration_date
+    } : (inn ? { inn } : null);
+
     try {
         const data = {
             name,
@@ -648,6 +799,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
             categories: enterpriseCategories,
             categoriesDescriptions,
             contacts,
+            legalData,
             updatedAt: new Date().toISOString()
         };
 
@@ -672,10 +824,28 @@ window.editEnterprise = (id) => {
     if (!ent) return;
 
     editingId = id;
+    currentLegalData = ent.legalData || null;
     
     document.getElementById('modalTitle').textContent = 'Редактировать предприятие';
     document.getElementById('enterpriseName').value = ent.name;
     document.getElementById('enterpriseInfo').value = ent.info || '';
+    document.getElementById('enterpriseInn').value = ent.legalData?.inn || '';
+    
+    // Юридическая информация
+    if (ent.legalData) {
+        document.getElementById('legalOgrn').textContent = ent.legalData.ogrn || '-';
+        document.getElementById('legalFullName').textContent = ent.legalData.fullName || '-';
+        document.getElementById('legalOkved').textContent = ent.legalData.okved 
+            ? `${ent.legalData.okved} (${ent.legalData.okvedType || ''})` 
+            : '-';
+        document.getElementById('legalAddress').textContent = ent.legalData.address || '-';
+        document.getElementById('legalRegDate').textContent = ent.legalData.registrationDate
+            ? new Date(ent.legalData.registrationDate).toLocaleDateString('ru-RU')
+            : '-';
+        document.getElementById('legalInfoSection').style.display = 'block';
+    } else {
+        document.getElementById('legalInfoSection').style.display = 'none';
+    }
     
     document.querySelectorAll('.industry-cb').forEach(cb => {
         cb.checked = (ent.industries || []).includes(cb.value);
