@@ -414,19 +414,20 @@ header h1 {
 
 /* Специальная секция для описания */
 .form-section-info {
-    background: linear-gradient(145deg, rgba(30, 35, 60, 0.5), rgba(20, 25, 50, 0.5));
-    border: 2px solid rgba(99, 102, 241, 0.3);
-    border-radius: 20px;
-    padding: 30px;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
     margin-bottom: 20px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    box-shadow: none;
     transition: all 0.3s;
+    width: 100%;
 }
 
 .form-section-info:hover {
-    border-color: rgba(99, 102, 241, 0.6);
-    box-shadow: 0 10px 35px rgba(99, 102, 241, 0.2);
-    transform: translateY(-2px);
+    border: none;
+    box-shadow: none;
+    transform: none;
 }
 
 form label {
@@ -437,6 +438,13 @@ form label {
     font-size: 1em;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+/* Лейбл для секции информации */
+.form-section-info label {
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    color: #fff;
 }
 
 form input[type="text"],
@@ -470,11 +478,16 @@ form textarea {
 
 /* Специальный стиль для textarea описания */
 #enterpriseInfo {
-    min-height: 220px;
+    min-height: 400px;
+    width: 100% !important;
     background: #ffffff;
     color: #1a1f3a;
     border: 2px solid rgba(99, 102, 241, 0.4);
     box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+    padding: 20px;
+    font-size: 16px;
+    line-height: 1.8;
 }
 
 #enterpriseInfo:focus {
