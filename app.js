@@ -5,10 +5,12 @@ const COLLECTION_NAME = 'enterprises';
 const TRASH_COLLECTION = 'trash';
 const INDUSTRIES_COLLECTION = 'industries';
 const PRODUCTS_COLLECTION = 'products';
+const CATEGORIES_COLLECTION = 'categories';
 let enterprises = [];
 let trashedEnterprises = [];
 let industries = [];
 let products = [];
+let categories = [];
 let editingId = null;
 let contactsCounter = 0;
 let productsCounter = 0;
@@ -24,6 +26,7 @@ function checkAuth() {
         document.getElementById('mainContent').style.display = 'block';
         loadIndustries();
         loadProducts();
+        loadCategories();
         loadEnterprises();
         setupRealtimeListener();
     }
@@ -194,6 +197,137 @@ function updateProductsDatalist() {
     datalist.innerHTML = products.map(prod => `<option value="${prod}">`).join('');
 }
 
+// Загрузка списка категорий
+async function loadCategories() {
+    try {
+        const querySnapshot = await getDocs(collection(db, CATEGORIES_COLLECTION));
+        categories = [];
+        querySnapshot.forEach((doc) => {
+            categories.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // Если список пустой, добавляем базовые категории
+        if (categories.length === 0) {
+            const defaultCategories = [
+                { name: 'ОПК', hasDescription: false },
+                { name: 'Категорируется', hasDescription: false },
+                { name: 'Участник производительности труда', hasDescription: false },
+                { name: 'Участник профессионалитета', hasDescription: false },
+                { name: 'Получатель поддержки региональной', hasDescription: true },
+                { name: 'Получатель поддержки федеральной', hasDescription: true }
+            ];
+            
+            for (const cat of defaultCategories) {
+                const docRef = await addDoc(collection(db, CATEGORIES_COLLECTION), cat);
+                categories.push({ id: docRef.id, ...cat });
+            }
+        }
+        
+        renderCategoriesFilters();
+        renderCategoriesCheckboxes();
+    } catch (error) {
+        console.error("Ошибка загрузки категорий:", error);
+    }
+}
+
+// Отрисовка фильтров категорий
+function renderCategoriesFilters() {
+    const container = document.getElementById('categoriesFilter');
+    container.innerHTML = categories.map(cat => `
+        <label><input type="checkbox" class="category-filter-cb" value="${cat.id}"> ${escapeHtml(cat.name)}</label>
+    `).join('');
+    
+    // Привязываем обработчики
+    document.querySelectorAll('.category-filter-cb').forEach(cb => {
+        cb.addEventListener('change', displayEnterprises);
+    });
+}
+
+// Отрисовка чекбоксов категорий в форме
+function renderCategoriesCheckboxes() {
+    const container = document.getElementById('categoriesCheckboxes');
+    let html = '';
+    
+    categories.forEach(cat => {
+        html += `
+            <label>
+                <input type="checkbox" class="category-cb" data-category-id="${cat.id}" data-has-desc="${cat.hasDescription}">
+                ${escapeHtml(cat.name)}
+            </label>
+        `;
+        
+        if (cat.hasDescription) {
+            html += `
+                <div class="support-textarea">
+                    <textarea 
+                        id="categoryDesc_${cat.id}" 
+                        placeholder="Описание: ${escapeHtml(cat.name)}..." 
+                        rows="2"
+                        style="display: none;"
+                    ></textarea>
+                </div>
+            `;
+        }
+    });
+    
+    html += `<button type="button" id="addCategoryBtn" class="add-category-btn">➕ Добавить категорию</button>`;
+    container.innerHTML = html;
+    
+    // Обработчики для чекбоксов с описанием
+    categories.forEach(cat => {
+        if (cat.hasDescription) {
+            const checkbox = document.querySelector(`[data-category-id="${cat.id}"]`);
+            const textarea = document.getElementById(`categoryDesc_${cat.id}`);
+            
+            checkbox.addEventListener('change', () => {
+                textarea.style.display = checkbox.checked ? 'block' : 'none';
+            });
+        }
+    });
+    
+    // Обработчик кнопки добавления категории
+    document.getElementById('addCategoryBtn').addEventListener('click', () => {
+        document.getElementById('addCategoryModal').style.display = 'flex';
+        document.getElementById('newCategoryInput').value = '';
+        document.getElementById('categoryHasDescription').checked = false;
+    });
+}
+
+// Добавление новой категории
+document.getElementById('closeAddCategoryModal').addEventListener('click', () => {
+    document.getElementById('addCategoryModal').style.display = 'none';
+});
+
+document.getElementById('saveCategoryBtn').addEventListener('click', async () => {
+    const newCategory = document.getElementById('newCategoryInput').value.trim();
+    const hasDescription = document.getElementById('categoryHasDescription').checked;
+    
+    if (!newCategory) {
+        alert('Введите название категории!');
+        return;
+    }
+    
+    if (categories.some(cat => cat.name === newCategory)) {
+        alert('Такая категория уже существует!');
+        return;
+    }
+    
+    try {
+        const docRef = await addDoc(collection(db, CATEGORIES_COLLECTION), { 
+            name: newCategory, 
+            hasDescription 
+        });
+        categories.push({ id: docRef.id, name: newCategory, hasDescription });
+        renderCategoriesFilters();
+        renderCategoriesCheckboxes();
+        document.getElementById('addCategoryModal').style.display = 'none';
+        alert('Категория добавлена!');
+    } catch (error) {
+        console.error("Ошибка добавления категории:", error);
+        alert("Ошибка добавления категории");
+    }
+});
+
 // Загрузка предприятий из Firestore
 async function loadEnterprises() {
     try {
@@ -324,14 +458,20 @@ window.viewEnterprise = async (id) => {
     }
 
     // Категории
-    if (ent.categories) {
+    if (ent.categories && Object.keys(ent.categories).length > 0) {
         html += '<div class="view-section"><h3>📂 Категории</h3><ul>';
-        if (ent.categories.opk) html += '<li>✅ ОПК</li>';
-        if (ent.categories.categorized) html += '<li>✅ Категорируется</li>';
-        if (ent.categories.productivity) html += '<li>✅ Участник производительности труда</li>';
-        if (ent.categories.professionalism) html += '<li>✅ Участник профессионалитета</li>';
-        if (ent.categories.regionalSupport) html += `<li>✅ Получатель поддержки региональной: ${escapeHtml(ent.regionalSupportDesc || '')}</li>`;
-        if (ent.categories.federalSupport) html += `<li>✅ Получатель поддержки федеральной: ${escapeHtml(ent.federalSupportDesc || '')}</li>`;
+        Object.keys(ent.categories).forEach(catId => {
+            if (ent.categories[catId]) {
+                const category = categories.find(c => c.id === catId);
+                if (category) {
+                    html += `<li>✅ ${escapeHtml(category.name)}`;
+                    if (category.hasDescription && ent.categoriesDescriptions && ent.categoriesDescriptions[catId]) {
+                        html += `: ${escapeHtml(ent.categoriesDescriptions[catId])}`;
+                    }
+                    html += '</li>';
+                }
+            }
+        });
         html += '</ul></div>';
     }
 
@@ -375,14 +515,15 @@ document.getElementById('addBtn').addEventListener('click', () => {
     updateProductsDatalist();
     
     // Сброс категорий
-    document.getElementById('catOPK').checked = false;
-    document.getElementById('catCategorized').checked = false;
-    document.getElementById('catProductivity').checked = false;
-    document.getElementById('catProfessionalism').checked = false;
-    document.getElementById('catRegionalSupport').checked = false;
-    document.getElementById('catFederalSupport').checked = false;
-    document.getElementById('regionalSupportDesc').value = '';
-    document.getElementById('federalSupportDesc').value = '';
+    document.querySelectorAll('.category-cb').forEach(cb => {
+        cb.checked = false;
+        const categoryId = cb.dataset.categoryId;
+        const textarea = document.getElementById(`categoryDesc_${categoryId}`);
+        if (textarea) {
+            textarea.value = '';
+            textarea.style.display = 'none';
+        }
+    });
     
     // Сброс контактов
     document.getElementById('contactsList').innerHTML = '';
@@ -437,18 +578,22 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         return;
     }
 
-    // Категории
-    const categories = {
-        opk: document.getElementById('catOPK').checked,
-        categorized: document.getElementById('catCategorized').checked,
-        productivity: document.getElementById('catProductivity').checked,
-        professionalism: document.getElementById('catProfessionalism').checked,
-        regionalSupport: document.getElementById('catRegionalSupport').checked,
-        federalSupport: document.getElementById('catFederalSupport').checked
-    };
-
-    const regionalSupportDesc = document.getElementById('regionalSupportDesc').value.trim();
-    const federalSupportDesc = document.getElementById('federalSupportDesc').value.trim();
+    // Категории - новая структура (ID категорий)
+    const enterpriseCategories = {};
+    const categoriesDescriptions = {};
+    
+    document.querySelectorAll('.category-cb:checked').forEach(cb => {
+        const categoryId = cb.dataset.categoryId;
+        const hasDesc = cb.dataset.hasDesc === 'true';
+        enterpriseCategories[categoryId] = true;
+        
+        if (hasDesc) {
+            const descTextarea = document.getElementById(`categoryDesc_${categoryId}`);
+            if (descTextarea) {
+                categoriesDescriptions[categoryId] = descTextarea.value.trim();
+            }
+        }
+    });
 
     // Руководители
     const director = {
@@ -500,9 +645,8 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
             director: director.fullName ? director : null,
             assistant: assistant.fullName ? assistant : null,
             productionTypes,
-            categories,
-            regionalSupportDesc,
-            federalSupportDesc,
+            categories: enterpriseCategories,
+            categoriesDescriptions,
             contacts,
             updatedAt: new Date().toISOString()
         };
@@ -582,20 +726,22 @@ window.editEnterprise = (id) => {
     
     updateProductsDatalist();
     
-    // Категории
-    if (ent.categories) {
-        document.getElementById('catOPK').checked = ent.categories.opk || false;
-        document.getElementById('catCategorized').checked = ent.categories.categorized || false;
-        document.getElementById('catProductivity').checked = ent.categories.productivity || false;
-        document.getElementById('catProfessionalism').checked = ent.categories.professionalism || false;
-        document.getElementById('catRegionalSupport').checked = ent.categories.regionalSupport || false;
-        document.getElementById('catFederalSupport').checked = ent.categories.federalSupport || false;
-    } else {
-        document.getElementById('catOPK').checked = false;
-    }
-    
-    document.getElementById('regionalSupportDesc').value = ent.regionalSupportDesc || '';
-    document.getElementById('federalSupportDesc').value = ent.federalSupportDesc || '';
+    // Категории - новая структура
+    document.querySelectorAll('.category-cb').forEach(cb => {
+        const categoryId = cb.dataset.categoryId;
+        cb.checked = ent.categories && ent.categories[categoryId] || false;
+        
+        const textarea = document.getElementById(`categoryDesc_${categoryId}`);
+        if (textarea) {
+            if (cb.checked && ent.categoriesDescriptions && ent.categoriesDescriptions[categoryId]) {
+                textarea.value = ent.categoriesDescriptions[categoryId];
+                textarea.style.display = 'block';
+            } else {
+                textarea.value = '';
+                textarea.style.display = 'none';
+            }
+        }
+    });
     
     // Контакты
     const contactsList = document.getElementById('contactsList');
@@ -763,30 +909,35 @@ document.getElementById('exportBtn').addEventListener('click', () => {
     }
 
     // Формируем CSV
-    let csv = 'Название;Информация;Отрасли;Категории;Поддержка региональная;Поддержка федеральная;Контакты\n';
+    let csv = 'Название;Информация;Отрасли;Категории;Контакты\n';
     
     enterprises.forEach(ent => {
         const name = (ent.name || '').replace(/;/g, ',');
         const info = (ent.info || '').replace(/;/g, ',').replace(/\n/g, ' ');
         const industries = (ent.industries || []).join(', ');
         
-        const categories = [];
+        const categoriesList = [];
         if (ent.categories) {
-            if (ent.categories.opk) categories.push('ОПК');
-            if (ent.categories.categorized) categories.push('Категорируется');
-            if (ent.categories.productivity) categories.push('Производительность труда');
-            if (ent.categories.professionalism) categories.push('Профессионалитет');
+            Object.keys(ent.categories).forEach(catId => {
+                if (ent.categories[catId]) {
+                    const category = categories.find(c => c.id === catId);
+                    if (category) {
+                        let catStr = category.name;
+                        if (category.hasDescription && ent.categoriesDescriptions && ent.categoriesDescriptions[catId]) {
+                            catStr += `: ${ent.categoriesDescriptions[catId]}`;
+                        }
+                        categoriesList.push(catStr);
+                    }
+                }
+            });
         }
-        const categoriesStr = categories.join(', ');
-        
-        const regionalSupport = (ent.regionalSupportDesc || '').replace(/;/g, ',');
-        const federalSupport = (ent.federalSupportDesc || '').replace(/;/g, ',');
+        const categoriesStr = categoriesList.join(', ').replace(/;/g, ',');
         
         const contacts = (ent.contacts || []).map(c => 
             `${c.fullName} (${c.position}) - ${c.workPhone}, ${c.email}, ${c.mobilePhone}`
         ).join(' | ').replace(/;/g, ',');
         
-        csv += `${name};${info};${industries};${categoriesStr};${regionalSupport};${federalSupport};${contacts}\n`;
+        csv += `${name};${info};${industries};${categoriesStr};${contacts}\n`;
     });
 
     // Скачивание

@@ -560,19 +560,35 @@ header h1 {
 }
 
 .categories-section {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.categories-section .category-item {
+    display: contents;
 }
 
 .categories-section label {
     display: flex;
     align-items: center;
     gap: 10px;
+    padding: 10px 15px;
+    background: rgba(30, 35, 60, 0.6);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin: 0;
+    color: #d1d5db;
     font-weight: normal;
     text-transform: none;
     letter-spacing: normal;
-    margin-bottom: 0;
+}
+
+.categories-section label:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: #6366f1;
 }
 
 .categories-section input[type="checkbox"] {
@@ -582,10 +598,50 @@ header h1 {
     accent-color: #6366f1;
 }
 
+.categories-section .support-textarea {
+    grid-column: 1 / -1;
+    margin-top: -5px;
+}
+
 .categories-section textarea {
-    margin-top: 10px;
-    margin-left: 28px;
-    width: calc(100% - 28px);
+    width: 100%;
+    padding: 14px 18px;
+    background: #ffffff;
+    border: 2px solid rgba(99, 102, 241, 0.4);
+    border-radius: 12px;
+    color: #1a1f3a;
+    font-size: 16px;
+    font-family: inherit;
+    transition: all 0.3s;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.categories-section textarea:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 25px rgba(139, 92, 246, 0.4);
+}
+
+.add-category-btn {
+    grid-column: 1 / -1;
+    width: 100%;
+    padding: 12px;
+    background: rgba(99, 102, 241, 0.2);
+    border: 2px solid rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s;
+    margin-top: 5px;
+}
+
+.add-category-btn:hover {
+    background: rgba(99, 102, 241, 0.3);
+    border-color: #6366f1;
 }
 
 /* Контакты */

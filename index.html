@@ -111,21 +111,8 @@
 
                 <div class="form-section">
                     <label>📂 Дополнительные категории</label>
-                    <div class="categories-section">
-                        <label><input type="checkbox" id="catOPK"> ОПК</label>
-                        <label><input type="checkbox" id="catCategorized"> Категорируется</label>
-                        <label><input type="checkbox" id="catProductivity"> Участник производительности труда</label>
-                        <label><input type="checkbox" id="catProfessionalism"> Участник профессионалитета</label>
-                        
-                        <label>
-                            <input type="checkbox" id="catRegionalSupport"> Получатель поддержки региональной
-                        </label>
-                        <textarea id="regionalSupportDesc" placeholder="Описание региональной поддержки..." rows="2"></textarea>
-                        
-                        <label>
-                            <input type="checkbox" id="catFederalSupport"> Получатель поддержки федеральной
-                        </label>
-                        <textarea id="federalSupportDesc" placeholder="Описание федеральной поддержки..." rows="2"></textarea>
+                    <div id="categoriesCheckboxes" class="categories-section">
+                        <!-- Динамически создаваемые чекбоксы категорий -->
                     </div>
                 </div>
 
@@ -163,6 +150,20 @@
                 <h2>➕ Добавить новую отрасль</h2>
                 <input type="text" id="newIndustryInput" placeholder="Название отрасли...">
                 <button id="saveIndustryBtn" class="save-btn">Добавить</button>
+            </div>
+        </div>
+
+        <!-- Модальное окно добавления категории -->
+        <div id="addCategoryModal" class="modal">
+            <div class="modal-content modal-small">
+                <span id="closeAddCategoryModal" class="close">&times;</span>
+                <h2>➕ Добавить новую категорию</h2>
+                <input type="text" id="newCategoryInput" placeholder="Название категории...">
+                <label style="display: flex; align-items: center; gap: 10px; margin: 15px 0;">
+                    <input type="checkbox" id="categoryHasDescription">
+                    <span>Категория имеет поле для описания</span>
+                </label>
+                <button id="saveCategoryBtn" class="save-btn">Добавить</button>
             </div>
         </div>
 
