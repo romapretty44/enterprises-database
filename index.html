@@ -24,6 +24,8 @@
             <h1>🏭 База предприятий</h1>
             <div class="header-actions">
                 <button id="addBtn" class="add-btn">➕ Добавить предприятие</button>
+                <button id="exportBtn" class="export-btn">📊 Экспорт в Excel</button>
+                <button id="trashBtn" class="trash-btn">🗑️ Корзина</button>
                 <button id="logoutBtn" class="logout-btn">🚪 Выйти</button>
             </div>
         </header>
@@ -32,20 +34,21 @@
         <div class="filters">
             <input type="text" id="searchInput" placeholder="🔍 Поиск по названию или описанию...">
             
-            <div class="industry-filter" id="industryFilter">
-                <h3>Фильтр по отраслям:</h3>
-                <label><input type="checkbox" value="Промышленность"> Промышленность</label>
-                <label><input type="checkbox" value="Судоремонт"> Судоремонт</label>
-                <label><input type="checkbox" value="Добыча"> Добыча</label>
-                <label><input type="checkbox" value="Обработка"> Обработка</label>
-                <label><input type="checkbox" value="Лёгкая промышленность"> Лёгкая промышленность</label>
-                <label><input type="checkbox" value="Рыбная отрасль"> Рыбная отрасль</label>
-                <label><input type="checkbox" value="Металлургия"> Металлургия</label>
-                <label><input type="checkbox" value="Лесная промышленность"> Лесная промышленность</label>
-                <label><input type="checkbox" value="ОПК"> ОПК</label>
-                <label><input type="checkbox" value="Машиностроение"> Машиностроение</label>
-                <label><input type="checkbox" value="АПК"> АПК</label>
-                <label><input type="checkbox" value="Проект"> Проект</label>
+            <div class="filter-section">
+                <h3>Фильтр по отраслям (AND - все выбранные):</h3>
+                <div id="industryFilter" class="filter-checkboxes"></div>
+                <button id="addIndustryBtn" class="add-filter-btn">➕ Добавить отрасль</button>
+            </div>
+
+            <div class="filter-section">
+                <h3>Дополнительные категории:</h3>
+                <div id="categoriesFilter" class="filter-checkboxes">
+                    <label><input type="checkbox" value="categorized"> Категорируется</label>
+                    <label><input type="checkbox" value="productivity"> Участник производительности труда</label>
+                    <label><input type="checkbox" value="professionalism"> Участник профессионалитета</label>
+                    <label><input type="checkbox" value="regionalSupport"> Получатель поддержки региональной</label>
+                    <label><input type="checkbox" value="federalSupport"> Получатель поддержки федеральной</label>
+                </div>
             </div>
         </div>
 
@@ -54,41 +57,86 @@
             <p style="text-align: center;">Загрузка...</p>
         </div>
 
-        <!-- Модальное окно -->
+        <!-- Модальное окно добавления/редактирования -->
         <div id="modal" class="modal">
-            <div class="modal-content">
+            <div class="modal-content modal-large">
                 <span id="closeModal" class="close">&times;</span>
                 <h2 id="modalTitle">Добавить предприятие</h2>
                 
-                <label style="display: block; margin-bottom: 15px; font-size: 1.1em; color: #fff; font-weight: 600;">📝 Название предприятия *</label>
                 <div class="form-section">
+                    <label>📝 Название предприятия *</label>
                     <input type="text" id="enterpriseName" required placeholder="Введите название...">
                 </div>
                 
-                <label style="display: block; margin-bottom: 15px; font-size: 1.1em; color: #fff; font-weight: 600;">💼 Информация о предприятии</label>
-                <div class="form-section form-section-info">
-                    <textarea id="enterpriseInfo" rows="8" placeholder="Опишите деятельность, продукцию, историю предприятия..."></textarea>
+                <div class="form-section">
+                    <label>💼 Информация о предприятии</label>
+                    <textarea id="enterpriseInfo" rows="6" placeholder="Опишите деятельность, продукцию, историю предприятия..."></textarea>
                 </div>
                 
-                <label style="display: block; margin-bottom: 15px; font-size: 1.1em; color: #fff; font-weight: 600;">🏭 Отрасли (можно выбрать несколько) *</label>
                 <div class="form-section">
-                    <div id="industryCheckboxes" class="industry-checkboxes">
-                        <label><input type="checkbox" value="Промышленность"> Промышленность</label>
-                        <label><input type="checkbox" value="Судоремонт"> Судоремонт</label>
-                        <label><input type="checkbox" value="Добыча"> Добыча</label>
-                        <label><input type="checkbox" value="Обработка"> Обработка</label>
-                        <label><input type="checkbox" value="Лёгкая промышленность"> Лёгкая промышленность</label>
-                        <label><input type="checkbox" value="Рыбная отрасль"> Рыбная отрасль</label>
-                        <label><input type="checkbox" value="Металлургия"> Металлургия</label>
-                        <label><input type="checkbox" value="Лесная промышленность"> Лесная промышленность</label>
-                        <label><input type="checkbox" value="ОПК"> ОПК</label>
-                        <label><input type="checkbox" value="Машиностроение"> Машиностроение</label>
-                        <label><input type="checkbox" value="АПК"> АПК</label>
-                        <label><input type="checkbox" value="Проект"> Проект</label>
+                    <label>🏭 Отрасли (можно выбрать несколько) *</label>
+                    <div id="industryCheckboxes" class="industry-checkboxes"></div>
+                </div>
+
+                <div class="form-section">
+                    <label>📂 Дополнительные категории</label>
+                    <div class="categories-section">
+                        <label><input type="checkbox" id="catCategorized"> Категорируется</label>
+                        <label><input type="checkbox" id="catProductivity"> Участник производительности труда</label>
+                        <label><input type="checkbox" id="catProfessionalism"> Участник профессионалитета</label>
+                        
+                        <label>
+                            <input type="checkbox" id="catRegionalSupport"> Получатель поддержки региональной
+                        </label>
+                        <textarea id="regionalSupportDesc" placeholder="Описание региональной поддержки..." rows="2"></textarea>
+                        
+                        <label>
+                            <input type="checkbox" id="catFederalSupport"> Получатель поддержки федеральной
+                        </label>
+                        <textarea id="federalSupportDesc" placeholder="Описание федеральной поддержки..." rows="2"></textarea>
                     </div>
+                </div>
+
+                <div class="form-section">
+                    <label>👥 Контакты</label>
+                    <div id="contactsList"></div>
+                    <button type="button" id="addContactBtn" class="add-contact-btn">➕ Добавить контакт</button>
+                </div>
+
+                <div class="form-section">
+                    <label>📎 Файлы (документы, изображения)</label>
+                    <input type="file" id="fileInput" multiple accept="*/*">
+                    <div id="filesList" class="files-list"></div>
                 </div>
                 
                 <button id="saveBtn" class="save-btn">💾 Сохранить</button>
+            </div>
+        </div>
+
+        <!-- Модальное окно просмотра -->
+        <div id="viewModal" class="modal">
+            <div class="modal-content modal-large">
+                <span id="closeViewModal" class="close">&times;</span>
+                <div id="viewModalContent"></div>
+            </div>
+        </div>
+
+        <!-- Модальное окно корзины -->
+        <div id="trashModal" class="modal">
+            <div class="modal-content modal-large">
+                <span id="closeTrashModal" class="close">&times;</span>
+                <h2>🗑️ Корзина удалённых предприятий</h2>
+                <div id="trashContainer"></div>
+            </div>
+        </div>
+
+        <!-- Модальное окно добавления отрасли -->
+        <div id="addIndustryModal" class="modal">
+            <div class="modal-content modal-small">
+                <span id="closeAddIndustryModal" class="close">&times;</span>
+                <h2>➕ Добавить новую отрасль</h2>
+                <input type="text" id="newIndustryInput" placeholder="Название отрасли...">
+                <button id="saveIndustryBtn" class="save-btn">Добавить</button>
             </div>
         </div>
 
