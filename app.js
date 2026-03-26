@@ -1464,14 +1464,13 @@ document.getElementById('exportMailingBtn').addEventListener('click', () => {
         resultText = allEmails.join(', ');
         
     } else if (currentMailingMode === 'numbered') {
-        // Нумерованный список с названиями компаний (для учёта)
+        // Нумерованный список с названиями компаний БЕЗ почт (для учёта)
         const mailingList = [];
         let index = 1;
         
         filtered.forEach(ent => {
             const companyName = ent.name;
-            const emails = ent.mailingEmails.join(', ');
-            mailingList.push(`${index}. ${companyName} - ${emails}`);
+            mailingList.push(`${index}. ${companyName}`);
             totalEmailsCount += ent.mailingEmails.length;
             index++;
         });
