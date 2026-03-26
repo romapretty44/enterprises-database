@@ -41,6 +41,11 @@
             </div>
 
             <div class="filter-section">
+                <h3>Виды производимой продукции:</h3>
+                <div id="productsFilter" class="filter-checkboxes"></div>
+            </div>
+
+            <div class="filter-section">
                 <h3>Дополнительные категории:</h3>
                 <div id="categoriesFilter" class="filter-checkboxes">
                     <label><input type="checkbox" value="categorized"> Категорируется</label>
@@ -76,6 +81,31 @@
                 <div class="form-section">
                     <label>🏭 Отрасли (можно выбрать несколько) *</label>
                     <div id="industryCheckboxes" class="industry-checkboxes"></div>
+                </div>
+
+                <div class="form-section">
+                    <label>👔 Руководитель предприятия</label>
+                    <div class="director-section">
+                        <input type="text" id="directorFullName" placeholder="ФИО">
+                        <input type="text" id="directorPosition" placeholder="Должность">
+                        <input type="text" id="directorPhone" placeholder="Контактный телефон">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <label>🤝 Помощник руководителя предприятия</label>
+                    <div class="assistant-section">
+                        <input type="text" id="assistantFullName" placeholder="ФИО">
+                        <input type="text" id="assistantPosition" placeholder="Должность">
+                        <input type="text" id="assistantPhone" placeholder="Контактный телефон">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <label>🏭 Производство (виды продукции)</label>
+                    <div id="productsList"></div>
+                    <button type="button" onclick="addProductField()" class="add-product-btn">➕ Добавить вид продукции</button>
+                    <datalist id="productsDatalist"></datalist>
                 </div>
 
                 <div class="form-section">

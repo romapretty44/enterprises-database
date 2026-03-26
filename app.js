@@ -4,12 +4,15 @@ import { db, storage, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, on
 const COLLECTION_NAME = 'enterprises';
 const TRASH_COLLECTION = 'trash';
 const INDUSTRIES_COLLECTION = 'industries';
+const PRODUCTS_COLLECTION = 'products';
 let enterprises = [];
 let trashedEnterprises = [];
 let industries = [];
+let products = [];
 let editingId = null;
 let currentFiles = [];
 let contactsCounter = 0;
+let productsCounter = 0;
 
 // Проверка авторизации
 function checkAuth() {
@@ -21,6 +24,7 @@ function checkAuth() {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainContent').style.display = 'block';
         loadIndustries();
+        loadProducts();
         loadEnterprises();
         setupRealtimeListener();
     }
@@ -129,6 +133,68 @@ document.getElementById('saveIndustryBtn').addEventListener('click', async () =>
     }
 });
 
+// Загрузка списка видов продукции
+async function loadProducts() {
+    try {
+        const querySnapshot = await getDocs(collection(db, PRODUCTS_COLLECTION));
+        products = [];
+        querySnapshot.forEach((doc) => {
+            products.push(doc.data().name);
+        });
+        
+        renderProductsFilter();
+    } catch (error) {
+        console.error("Ошибка загрузки видов продукции:", error);
+    }
+}
+
+// Отрисовка фильтров по видам продукции
+function renderProductsFilter() {
+    const container = document.getElementById('productsFilter');
+    if (!container) return;
+    
+    container.innerHTML = products.map(prod => `
+        <label><input type="checkbox" class="products-filter-cb" value="${prod}"> ${prod}</label>
+    `).join('');
+    
+    // Привязываем обработчики
+    document.querySelectorAll('.products-filter-cb').forEach(cb => {
+        cb.addEventListener('change', displayEnterprises);
+    });
+}
+
+// Добавление вида продукции в форму
+window.addProductField = () => {
+    const productId = productsCounter++;
+    const productsList = document.getElementById('productsList');
+    
+    const productHTML = `
+        <div class="product-item" data-product-id="${productId}">
+            <input type="text" 
+                   class="product-input" 
+                   list="productsDatalist" 
+                   placeholder="Введите вид продукции...">
+            <button type="button" class="remove-product-btn" onclick="removeProduct(${productId})">❌</button>
+        </div>
+    `;
+    
+    productsList.insertAdjacentHTML('beforeend', productHTML);
+    updateProductsDatalist();
+};
+
+window.removeProduct = (productId) => {
+    const productItem = document.querySelector(`[data-product-id="${productId}"]`);
+    if (productItem) productItem.remove();
+};
+
+// Обновление datalist для автокомплита продукции
+function updateProductsDatalist() {
+    const datalist = document.getElementById('productsDatalist');
+    if (!datalist) return;
+    
+    datalist.innerHTML = products.map(prod => `<option value="${prod}">`).join('');
+}
+
 // Загрузка предприятий из Firestore
 async function loadEnterprises() {
     try {
@@ -160,6 +226,7 @@ function displayEnterprises() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const selectedIndustries = Array.from(document.querySelectorAll('.industry-filter-cb:checked')).map(cb => cb.value);
     const selectedCategories = Array.from(document.querySelectorAll('#categoriesFilter input:checked')).map(cb => cb.value);
+    const selectedProducts = Array.from(document.querySelectorAll('.products-filter-cb:checked')).map(cb => cb.value);
 
     const filtered = enterprises.filter(ent => {
         const matchesSearch = ent.name.toLowerCase().includes(searchTerm) || 
@@ -173,7 +240,11 @@ function displayEnterprises() {
         const matchesCategories = selectedCategories.length === 0 || 
                                  selectedCategories.every(cat => ent.categories && ent.categories[cat]);
         
-        return matchesSearch && matchesIndustry && matchesCategories;
+        // Фильтрация по видам продукции (хотя бы один из выбранных)
+        const matchesProducts = selectedProducts.length === 0 || 
+                               selectedProducts.some(prod => ent.productionTypes && ent.productionTypes.includes(prod));
+        
+        return matchesSearch && matchesIndustry && matchesCategories && matchesProducts;
     });
 
     const container = document.getElementById('enterprisesContainer');
@@ -224,6 +295,35 @@ window.viewEnterprise = async (id) => {
         </div>
     `;
 
+    // Руководители
+    if (ent.director) {
+        html += '<div class="view-section"><h3>👔 Руководитель предприятия</h3>';
+        html += `<div class="contact-card">
+            <p><strong>${escapeHtml(ent.director.fullName || '-')}</strong></p>
+            <p>Должность: ${escapeHtml(ent.director.position || '-')}</p>
+            <p>📞 Контактный телефон: ${escapeHtml(ent.director.phone || '-')}</p>
+        </div></div>`;
+    }
+
+    if (ent.assistant) {
+        html += '<div class="view-section"><h3>🤝 Помощник руководителя предприятия</h3>';
+        html += `<div class="contact-card">
+            <p><strong>${escapeHtml(ent.assistant.fullName || '-')}</strong></p>
+            <p>Должность: ${escapeHtml(ent.assistant.position || '-')}</p>
+            <p>📞 Контактный телефон: ${escapeHtml(ent.assistant.phone || '-')}</p>
+        </div></div>`;
+    }
+
+    // Производство
+    if (ent.productionTypes && ent.productionTypes.length > 0) {
+        html += '<div class="view-section"><h3>🏭 Производство</h3>';
+        html += '<div class="production-tags">';
+        ent.productionTypes.forEach(prod => {
+            html += `<span class="production-tag">${escapeHtml(prod)}</span>`;
+        });
+        html += '</div></div>';
+    }
+
     // Категории
     if (ent.categories) {
         html += '<div class="view-section"><h3>📂 Категории</h3><ul>';
@@ -272,6 +372,19 @@ document.getElementById('addBtn').addEventListener('click', () => {
     document.getElementById('enterpriseName').value = '';
     document.getElementById('enterpriseInfo').value = '';
     document.querySelectorAll('.industry-cb').forEach(cb => cb.checked = false);
+    
+    // Сброс руководителей
+    document.getElementById('directorFullName').value = '';
+    document.getElementById('directorPosition').value = '';
+    document.getElementById('directorPhone').value = '';
+    document.getElementById('assistantFullName').value = '';
+    document.getElementById('assistantPosition').value = '';
+    document.getElementById('assistantPhone').value = '';
+    
+    // Сброс производства
+    document.getElementById('productsList').innerHTML = '';
+    productsCounter = 0;
+    updateProductsDatalist();
     
     // Сброс категорий
     document.getElementById('catCategorized').checked = false;
@@ -351,6 +464,34 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     const regionalSupportDesc = document.getElementById('regionalSupportDesc').value.trim();
     const federalSupportDesc = document.getElementById('federalSupportDesc').value.trim();
 
+    // Руководители
+    const director = {
+        fullName: document.getElementById('directorFullName').value.trim(),
+        position: document.getElementById('directorPosition').value.trim(),
+        phone: document.getElementById('directorPhone').value.trim()
+    };
+
+    const assistant = {
+        fullName: document.getElementById('assistantFullName').value.trim(),
+        position: document.getElementById('assistantPosition').value.trim(),
+        phone: document.getElementById('assistantPhone').value.trim()
+    };
+
+    // Производство - собираем виды продукции
+    const productionTypes = [];
+    const productInputs = document.querySelectorAll('.product-input');
+    productInputs.forEach(input => {
+        const value = input.value.trim();
+        if (value && !productionTypes.includes(value)) {
+            productionTypes.push(value);
+            // Добавляем в коллекцию products если новый
+            if (!products.includes(value)) {
+                products.push(value);
+                addDoc(collection(db, PRODUCTS_COLLECTION), { name: value }).catch(err => console.error(err));
+            }
+        }
+    });
+
     // Контакты
     const contacts = [];
     document.querySelectorAll('.contact-form').forEach(form => {
@@ -384,6 +525,9 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
             name,
             info,
             industries: industriesSelected,
+            director: director.fullName ? director : null,
+            assistant: assistant.fullName ? assistant : null,
+            productionTypes,
             categories,
             regionalSupportDesc,
             federalSupportDesc,
@@ -422,6 +566,51 @@ window.editEnterprise = (id) => {
     document.querySelectorAll('.industry-cb').forEach(cb => {
         cb.checked = (ent.industries || []).includes(cb.value);
     });
+    
+    // Руководители
+    if (ent.director) {
+        document.getElementById('directorFullName').value = ent.director.fullName || '';
+        document.getElementById('directorPosition').value = ent.director.position || '';
+        document.getElementById('directorPhone').value = ent.director.phone || '';
+    } else {
+        document.getElementById('directorFullName').value = '';
+        document.getElementById('directorPosition').value = '';
+        document.getElementById('directorPhone').value = '';
+    }
+
+    if (ent.assistant) {
+        document.getElementById('assistantFullName').value = ent.assistant.fullName || '';
+        document.getElementById('assistantPosition').value = ent.assistant.position || '';
+        document.getElementById('assistantPhone').value = ent.assistant.phone || '';
+    } else {
+        document.getElementById('assistantFullName').value = '';
+        document.getElementById('assistantPosition').value = '';
+        document.getElementById('assistantPhone').value = '';
+    }
+
+    // Производство
+    const productsList = document.getElementById('productsList');
+    productsList.innerHTML = '';
+    productsCounter = 0;
+    
+    if (ent.productionTypes && ent.productionTypes.length > 0) {
+        ent.productionTypes.forEach(prod => {
+            const productId = productsCounter++;
+            const productHTML = `
+                <div class="product-item" data-product-id="${productId}">
+                    <input type="text" 
+                           class="product-input" 
+                           list="productsDatalist" 
+                           value="${escapeHtml(prod)}"
+                           placeholder="Введите вид продукции...">
+                    <button type="button" class="remove-product-btn" onclick="removeProduct(${productId})">❌</button>
+                </div>
+            `;
+            productsList.insertAdjacentHTML('beforeend', productHTML);
+        });
+    }
+    
+    updateProductsDatalist();
     
     // Категории
     if (ent.categories) {
