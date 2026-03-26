@@ -100,15 +100,24 @@ async function loadFromCloud(silent = false) {
     try {
         // Используем localStorage как облачное хранилище с unique key
         const storageKey = 'enterprises_cloud_db_v1';
+        dbKey = storageKey;
+        
         const stored = localStorage.getItem(storageKey);
         
         if (stored) {
-            const data = JSON.parse(stored);
-            enterprises = data.enterprises || [];
-            dbKey = storageKey;
+            try {
+                const data = JSON.parse(stored);
+                enterprises = data.enterprises || [];
+                console.log('Загружено предприятий:', enterprises.length);
+            } catch (e) {
+                console.error('Ошибка парсинга данных:', e);
+                enterprises = [];
+            }
         } else {
+            console.log('Данных нет, создаём пустой массив');
             enterprises = [];
-            dbKey = storageKey;
+            // Сразу сохраняем пустую структуру
+            await saveToCloud();
         }
         
         syncStatus.textContent = '✅ Синхронизировано';
@@ -131,12 +140,15 @@ async function saveToCloud() {
             lastUpdate: new Date().toISOString()
         };
         
-        localStorage.setItem(dbKey, JSON.stringify(data));
+        const jsonData = JSON.stringify(data);
+        localStorage.setItem(dbKey, jsonData);
+        console.log('Сохранено предприятий:', enterprises.length);
+        console.log('Данные:', jsonData);
         
         // Эмуляция события storage для других вкладок
         window.dispatchEvent(new StorageEvent('storage', {
             key: dbKey,
-            newValue: JSON.stringify(data)
+            newValue: jsonData
         }));
         
         syncStatus.textContent = '✅ Сохранено';
