@@ -56,6 +56,20 @@
             </div>
         </div>
 
+        <!-- Панель управления выбором -->
+        <div id="selectionPanel" style="display: none; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 15px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #4ade80; font-weight: 600;">
+                    <span id="selectedCount">0</span> предприятий выбрано
+                </span>
+                <div style="display: flex; gap: 10px;">
+                    <button id="selectAllBtn" class="add-filter-btn">✅ Выбрать все</button>
+                    <button id="deselectAllBtn" class="add-filter-btn">❌ Снять выбор</button>
+                    <button id="exportSelectedMailingBtn" class="save-btn">📧 Выгрузить почты выбранных</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Список предприятий -->
         <div id="enterprisesContainer" class="enterprises-container">
             <p style="text-align: center;">Загрузка...</p>
@@ -87,35 +101,37 @@
                 </div>
                 
                 <div class="form-section" id="legalInfoSection" style="display: none;">
-                    <label>⚖️ Юридическая информация</label>
-                    <div class="legal-info-grid">
-                        <div class="legal-info-item">
-                            <span class="legal-label">ОГРН:</span>
-                            <span id="legalOgrn">-</span>
+                    <label>⚖️ Юридическая информация (редактируемая)</label>
+                    <div style="display: grid; gap: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #9ca3af; font-size: 0.9em;">ОГРН:</label>
+                            <input type="text" id="legalOgrnInput" placeholder="ОГРН">
                         </div>
-                        <div class="legal-info-item">
-                            <span class="legal-label">Полное название:</span>
-                            <span id="legalFullName">-</span>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #9ca3af; font-size: 0.9em;">Полное наименование:</label>
+                            <textarea id="legalFullNameInput" rows="2" placeholder="Полное наименование организации"></textarea>
                         </div>
-                        <div class="legal-info-item" style="grid-column: 1 / -1;">
-                            <span class="legal-label">ОКВЭД (основной):</span>
-                            <span id="legalOkved">-</span>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #9ca3af; font-size: 0.9em;">ОКВЭД (основной):</label>
+                            <div style="display: grid; grid-template-columns: 100px 1fr; gap: 10px;">
+                                <input type="text" id="legalOkvedCodeInput" placeholder="24.45">
+                                <input type="text" id="legalOkvedNameInput" placeholder="Расшифровка ОКВЭД">
+                            </div>
                         </div>
-                        <div class="legal-info-item" id="legalOkvedsContainer" style="grid-column: 1 / -1; display: none;">
-                            <span class="legal-label">ОКВЭД (дополнительные):</span>
-                            <div id="legalOkveds" style="color: #d1d5db;"></div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #9ca3af; font-size: 0.9em;">Юридический адрес:</label>
+                            <textarea id="legalAddressInput" rows="2" placeholder="Юридический адрес"></textarea>
                         </div>
-                        <div class="legal-info-item">
-                            <span class="legal-label">Юридический адрес:</span>
-                            <span id="legalAddress">-</span>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #9ca3af; font-size: 0.9em;">Дата регистрации:</label>
+                            <input type="text" id="legalRegDateInput" placeholder="2002-08-05">
                         </div>
-                        <div class="legal-info-item">
-                            <span class="legal-label">Дата регистрации:</span>
-                            <span id="legalRegDate">-</span>
-                        </div>
-                        <div class="legal-info-item">
-                            <span class="legal-label">Выручка предприятия:</span>
-                            <span id="legalRevenue">-</span>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; color: #9ca3af; font-size: 0.9em;">Выручка предприятия:</label>
+                            <div style="display: grid; grid-template-columns: 1fr 100px; gap: 10px;">
+                                <input type="number" id="legalRevenueInput" placeholder="Выручка в рублях">
+                                <input type="number" id="legalRevenueYearInput" placeholder="Год" min="2000" max="2030">
+                            </div>
                         </div>
                     </div>
                 </div>
