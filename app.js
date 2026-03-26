@@ -934,11 +934,22 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     // Контакты
     const contacts = [];
     document.querySelectorAll('.contact-form').forEach(form => {
-        const fullName = form.querySelector('.contact-fullname').value.trim();
-        const position = form.querySelector('.contact-position').value.trim();
-        const workPhone = form.querySelector('.contact-workphone').value.trim();
-        const email = form.querySelector('.contact-email').value.trim();
-        const mobilePhone = form.querySelector('.contact-mobilephone').value.trim();
+        const fullNameEl = form.querySelector('.contact-fullname');
+        const positionEl = form.querySelector('.contact-position');
+        const workPhoneEl = form.querySelector('.contact-workphone');
+        const emailEl = form.querySelector('.contact-email');
+        const mobilePhoneEl = form.querySelector('.contact-mobilephone');
+        
+        if (!fullNameEl || !positionEl || !workPhoneEl || !emailEl || !mobilePhoneEl) {
+            console.warn('Пропущена неполная форма контакта');
+            return;
+        }
+        
+        const fullName = fullNameEl.value.trim();
+        const position = positionEl.value.trim();
+        const workPhone = workPhoneEl.value.trim();
+        const email = emailEl.value.trim();
+        const mobilePhone = mobilePhoneEl.value.trim();
         
         if (fullName) {
             contacts.push({ fullName, position, workPhone, email, mobilePhone });
