@@ -8,6 +8,41 @@ const PRODUCTS_COLLECTION = 'products';
 const CATEGORIES_COLLECTION = 'categories';
 const DADATA_API_KEY = '2566ea2523ff5ec4a2f0fc93ff3ee1a00235b01a';
 const DADATA_API_URL = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party';
+const DADATA_OKVED_URL = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/okved2';
+
+// Функция для получения расшифровки ОКВЭД
+async function getOkvedName(code) {
+    if (!code) return '';
+    
+    try {
+        const response = await fetch(DADATA_OKVED_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Token ${DADATA_API_KEY}`
+            },
+            body: JSON.stringify({ query: code })
+        });
+        
+        if (!response.ok) {
+            console.error(`Ошибка API ОКВЭД: ${response.status}`);
+            return '';
+        }
+        
+        const result = await response.json();
+        if (result.suggestions && result.suggestions.length > 0) {
+            // API возвращает "24.45 Производство прочих цветных металлов"
+            // Извлекаем только название без кода
+            const fullValue = result.suggestions[0].value;
+            const name = fullValue.replace(/^[\d.]+\s*/, ''); // Убираем код в начале
+            return name;
+        }
+        return '';
+    } catch (error) {
+        console.error('Ошибка получения расшифровки ОКВЭД:', error);
+        return '';
+    }
+}
 
 let enterprises = [];
 let trashedEnterprises = [];
@@ -114,33 +149,46 @@ document.getElementById('loadFromEgrulBtn').addEventListener('click', async () =
         document.getElementById('legalOgrn').textContent = data.ogrn || '-';
         document.getElementById('legalFullName').textContent = data.name.full_with_opf || '-';
         
-        // ОКВЭД основной с правильной расшифровкой через вложенную структуру data.data.okved.name
+        // ОКВЭД основной - получаем расшифровку через отдельный API запрос
         if (data.okved) {
-            let okvedName = '';
-            // Проверяем наличие вложенной структуры data.data.okved.name
-            if (result.suggestions[0].data?.data?.okved?.name) {
-                okvedName = result.suggestions[0].data.data.okved.name;
-            }
+            document.getElementById('legalOkved').textContent = '⏳ Загрузка расшифровки...';
+            const okvedName = await getOkvedName(data.okved);
             
             const okvedText = okvedName 
                 ? `${data.okved} - ${okvedName}` 
                 : data.okved;
             document.getElementById('legalOkved').textContent = okvedText;
+            
+            // Сохраняем расшифровку в currentLegalData
+            currentLegalData.okvedName = okvedName;
         } else {
             document.getElementById('legalOkved').textContent = '-';
         }
         
-        // Дополнительные ОКВЭД с правильной расшифровкой
+        // Дополнительные ОКВЭД - получаем расшифровку для каждого через API
         if (data.okveds && data.okveds.length > 0) {
-            const okvedsHtml = data.okveds.map(okv => {
-                // okv.name содержит расшифровку, а okv.kod - код
+            document.getElementById('legalOkveds').innerHTML = '⏳ Загрузка расшифровок...';
+            document.getElementById('legalOkvedsContainer').style.display = 'grid';
+            
+            // Загружаем расшифровки параллельно
+            const okvedsWithNames = await Promise.all(
+                data.okveds.map(async (okv) => {
+                    const name = await getOkvedName(okv.kod);
+                    return { kod: okv.kod, name: name };
+                })
+            );
+            
+            // Сохраняем в currentLegalData
+            currentLegalData.okveds = okvedsWithNames;
+            
+            // Отображаем
+            const okvedsHtml = okvedsWithNames.map(okv => {
                 const text = okv.name 
                     ? `<div style="margin-bottom: 5px;">• ${okv.kod} - ${okv.name}</div>` 
                     : `<div style="margin-bottom: 5px;">• ${okv.kod}</div>`;
                 return text;
             }).join('');
             document.getElementById('legalOkveds').innerHTML = okvedsHtml;
-            document.getElementById('legalOkvedsContainer').style.display = 'grid';
         } else {
             document.getElementById('legalOkvedsContainer').style.display = 'none';
         }
@@ -841,11 +889,8 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         ogrn: currentLegalData.ogrn,
         fullName: currentLegalData.name?.full_with_opf,
         okved: currentLegalData.okved,
-        okvedName: currentLegalData.data?.okved?.name || '', // Правильный путь к расшифровке ОКВЭД
-        okveds: (currentLegalData.okveds || []).map(okv => ({
-            kod: okv.kod,
-            name: okv.name // Сохраняем правильное поле name вместо type
-        })),
+        okvedName: currentLegalData.okvedName || '', // Расшифровка получена через API suggest/okved2
+        okveds: currentLegalData.okveds || [], // Уже содержит { kod, name } из API
         address: currentLegalData.address?.unrestricted_value,
         registrationDate: currentLegalData.state?.registration_date
     } : (inn ? { inn } : null);
