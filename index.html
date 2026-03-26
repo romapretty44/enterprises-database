@@ -7,89 +7,90 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Экран входа -->
+    <!-- Экран авторизации -->
     <div id="loginScreen" class="login-screen">
         <div class="login-box">
-            <h1>🔐 Вход в систему</h1>
-            <p>База предприятий</p>
-            <form id="loginForm">
-                <input type="password" id="passwordInput" placeholder="Введите пароль" required>
-                <button type="submit" class="btn btn-primary">Войти</button>
-            </form>
-            <div id="loginError" class="login-error"></div>
+            <h1>🏭 База предприятий</h1>
+            <p>Введите пароль для входа</p>
+            <input type="password" id="passwordInput" placeholder="Пароль">
+            <button id="loginBtn">Войти</button>
+            <p class="hint">☁️ Облачная синхронизация активна</p>
         </div>
     </div>
 
-    <div class="container" style="display: none;">
+    <!-- Основной контент -->
+    <div id="mainContent" style="display: none;">
         <header>
-            <h1>📊 База предприятий</h1>
-            <div class="sync-status">
-                <span id="syncStatus">🔄 Синхронизация...</span>
+            <h1>🏭 База предприятий</h1>
+            <div class="header-actions">
+                <button id="addBtn" class="add-btn">➕ Добавить предприятие</button>
+                <button id="logoutBtn" class="logout-btn">🚪 Выйти</button>
             </div>
         </header>
 
-        <div class="controls">
-            <input type="text" id="searchInput" placeholder="🔍 Поиск по названию или отрасли...">
-            <button id="addBtn" class="btn btn-primary">+ Добавить предприятие</button>
-        </div>
-
+        <!-- Поиск и фильтры -->
         <div class="filters">
-            <label><input type="checkbox" class="filter-checkbox" value="промышленность"> Промышленность</label>
-            <label><input type="checkbox" class="filter-checkbox" value="судоремонт"> Судоремонт</label>
-            <label><input type="checkbox" class="filter-checkbox" value="добыча"> Добыча</label>
-            <label><input type="checkbox" class="filter-checkbox" value="обработка"> Обработка</label>
-            <label><input type="checkbox" class="filter-checkbox" value="лёгкая промышленность"> Лёгкая промышленность</label>
-            <label><input type="checkbox" class="filter-checkbox" value="рыбная отрасль"> Рыбная отрасль</label>
-            <label><input type="checkbox" class="filter-checkbox" value="металлургия"> Металлургия</label>
-            <label><input type="checkbox" class="filter-checkbox" value="лесная промышленность"> Лесная промышленность</label>
-            <label><input type="checkbox" class="filter-checkbox" value="ОПК"> ОПК</label>
-            <label><input type="checkbox" class="filter-checkbox" value="машиностроение"> Машиностроение</label>
-            <label><input type="checkbox" class="filter-checkbox" value="АПК"> АПК</label>
-            <label><input type="checkbox" class="filter-checkbox" value="проект"> Проект</label>
+            <input type="text" id="searchInput" placeholder="🔍 Поиск по названию или описанию...">
+            
+            <div class="industry-filter" id="industryFilter">
+                <h3>Фильтр по отраслям:</h3>
+                <label><input type="checkbox" value="Промышленность"> Промышленность</label>
+                <label><input type="checkbox" value="Судоремонт"> Судоремонт</label>
+                <label><input type="checkbox" value="Добыча"> Добыча</label>
+                <label><input type="checkbox" value="Обработка"> Обработка</label>
+                <label><input type="checkbox" value="Лёгкая промышленность"> Лёгкая промышленность</label>
+                <label><input type="checkbox" value="Рыбная отрасль"> Рыбная отрасль</label>
+                <label><input type="checkbox" value="Металлургия"> Металлургия</label>
+                <label><input type="checkbox" value="Лесная промышленность"> Лесная промышленность</label>
+                <label><input type="checkbox" value="ОПК"> ОПК</label>
+                <label><input type="checkbox" value="Машиностроение"> Машиностроение</label>
+                <label><input type="checkbox" value="АПК"> АПК</label>
+                <label><input type="checkbox" value="Проект"> Проект</label>
+            </div>
         </div>
 
-        <div id="enterprisesList" class="enterprises-list"></div>
-    </div>
+        <!-- Список предприятий -->
+        <div id="enterprisesContainer" class="enterprises-container">
+            <p style="text-align: center;">Загрузка...</p>
+        </div>
 
-    <!-- Модальное окно -->
-    <div id="modal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2 id="modalTitle">Добавить предприятие</h2>
-            <form id="enterpriseForm">
-                <input type="hidden" id="enterpriseId">
+        <!-- Модальное окно -->
+        <div id="modal" class="modal">
+            <div class="modal-content">
+                <span id="closeModal" class="close">&times;</span>
+                <h2 id="modalTitle">Добавить предприятие</h2>
                 
-                <label for="name">Название предприятия *</label>
-                <input type="text" id="name" required>
-
-                <label for="description">Информация о предприятии</label>
-                <textarea id="description" rows="5"></textarea>
-
+                <label>Название предприятия *</label>
+                <input type="text" id="enterpriseName" required>
+                
+                <label>Информация о предприятии</label>
+                <textarea id="enterpriseInfo" rows="4"></textarea>
+                
                 <label>Отрасли (можно выбрать несколько) *</label>
-                <div class="checkbox-group">
-                    <label><input type="checkbox" name="industries" value="промышленность"> Промышленность</label>
-                    <label><input type="checkbox" name="industries" value="судоремонт"> Судоремонт</label>
-                    <label><input type="checkbox" name="industries" value="добыча"> Добыча</label>
-                    <label><input type="checkbox" name="industries" value="обработка"> Обработка</label>
-                    <label><input type="checkbox" name="industries" value="лёгкая промышленность"> Лёгкая промышленность</label>
-                    <label><input type="checkbox" name="industries" value="рыбная отрасль"> Рыбная отрасль</label>
-                    <label><input type="checkbox" name="industries" value="металлургия"> Металлургия</label>
-                    <label><input type="checkbox" name="industries" value="лесная промышленность"> Лесная промышленность</label>
-                    <label><input type="checkbox" name="industries" value="ОПК"> ОПК</label>
-                    <label><input type="checkbox" name="industries" value="машиностроение"> Машиностроение</label>
-                    <label><input type="checkbox" name="industries" value="АПК"> АПК</label>
-                    <label><input type="checkbox" name="industries" value="проект"> Проект</label>
+                <div id="industryCheckboxes" class="industry-checkboxes">
+                    <label><input type="checkbox" value="Промышленность"> Промышленность</label>
+                    <label><input type="checkbox" value="Судоремонт"> Судоремонт</label>
+                    <label><input type="checkbox" value="Добыча"> Добыча</label>
+                    <label><input type="checkbox" value="Обработка"> Обработка</label>
+                    <label><input type="checkbox" value="Лёгкая промышленность"> Лёгкая промышленность</label>
+                    <label><input type="checkbox" value="Рыбная отрасль"> Рыбная отрасль</label>
+                    <label><input type="checkbox" value="Металлургия"> Металлургия</label>
+                    <label><input type="checkbox" value="Лесная промышленность"> Лесная промышленность</label>
+                    <label><input type="checkbox" value="ОПК"> ОПК</label>
+                    <label><input type="checkbox" value="Машиностроение"> Машиностроение</label>
+                    <label><input type="checkbox" value="АПК"> АПК</label>
+                    <label><input type="checkbox" value="Проект"> Проект</label>
                 </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Сохранить</button>
-                    <button type="button" id="cancelBtn" class="btn btn-secondary">Отмена</button>
-                </div>
-            </form>
+                
+                <button id="saveBtn" class="save-btn">💾 Сохранить</button>
+            </div>
         </div>
+
+        <footer>
+            <p>☁️ Все данные синхронизируются в реальном времени между всеми пользователями</p>
+        </footer>
     </div>
 
-    <!-- Firebase SDK -->
-    <script type="module" src="script.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
