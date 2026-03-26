@@ -94,6 +94,10 @@ document.getElementById('loadFromEgrulBtn').addEventListener('click', async () =
             return;
         }
         
+        // Логируем полный ответ для отладки структуры
+        console.log('=== ПОЛНЫЙ ОТВЕТ DADATA ===');
+        console.log(JSON.stringify(result.suggestions[0], null, 2));
+        
         const data = result.suggestions[0].data;
         currentLegalData = data; // Сохраняем для последующего сохранения
         
@@ -110,21 +114,28 @@ document.getElementById('loadFromEgrulBtn').addEventListener('click', async () =
         document.getElementById('legalOgrn').textContent = data.ogrn || '-';
         document.getElementById('legalFullName').textContent = data.name.full_with_opf || '-';
         
-        // ОКВЭД основной с правильным форматом: КОД - НАИМЕНОВАНИЕ
+        // ОКВЭД основной с правильной расшифровкой через вложенную структуру data.data.okved.name
         if (data.okved) {
-            const okvedText = data.okved_type 
-                ? `${data.okved} - ${data.okved_type}` 
+            let okvedName = '';
+            // Проверяем наличие вложенной структуры data.data.okved.name
+            if (result.suggestions[0].data?.data?.okved?.name) {
+                okvedName = result.suggestions[0].data.data.okved.name;
+            }
+            
+            const okvedText = okvedName 
+                ? `${data.okved} - ${okvedName}` 
                 : data.okved;
             document.getElementById('legalOkved').textContent = okvedText;
         } else {
             document.getElementById('legalOkved').textContent = '-';
         }
         
-        // Дополнительные ОКВЭД
+        // Дополнительные ОКВЭД с правильной расшифровкой
         if (data.okveds && data.okveds.length > 0) {
             const okvedsHtml = data.okveds.map(okv => {
-                const text = okv.type 
-                    ? `<div style="margin-bottom: 5px;">• ${okv.kod} - ${okv.type}</div>` 
+                // okv.name содержит расшифровку, а okv.kod - код
+                const text = okv.name 
+                    ? `<div style="margin-bottom: 5px;">• ${okv.kod} - ${okv.name}</div>` 
                     : `<div style="margin-bottom: 5px;">• ${okv.kod}</div>`;
                 return text;
             }).join('');
@@ -630,8 +641,8 @@ window.viewEnterprise = async (id) => {
         }
         
         if (ent.legalData.okved) {
-            const okvedText = ent.legalData.okvedType 
-                ? `${escapeHtml(ent.legalData.okved)} - ${escapeHtml(ent.legalData.okvedType)}` 
+            const okvedText = ent.legalData.okvedName 
+                ? `${escapeHtml(ent.legalData.okved)} - ${escapeHtml(ent.legalData.okvedName)}` 
                 : escapeHtml(ent.legalData.okved);
             html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
                 <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">ОКВЭД (основной):</span>
@@ -645,8 +656,8 @@ window.viewEnterprise = async (id) => {
                 <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">ОКВЭД (дополнительные):</span>
                 <div style="color: #d1d5db;">`;
             ent.legalData.okveds.forEach(okv => {
-                const okvedText = okv.type 
-                    ? `${escapeHtml(okv.kod)} - ${escapeHtml(okv.type)}` 
+                const okvedText = okv.name 
+                    ? `${escapeHtml(okv.kod)} - ${escapeHtml(okv.name)}` 
                     : escapeHtml(okv.kod);
                 html += `<div style="margin-bottom: 5px;">• ${okvedText}</div>`;
             });
@@ -830,8 +841,11 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         ogrn: currentLegalData.ogrn,
         fullName: currentLegalData.name?.full_with_opf,
         okved: currentLegalData.okved,
-        okvedType: currentLegalData.okved_type,
-        okveds: currentLegalData.okveds || [],
+        okvedName: currentLegalData.data?.okved?.name || '', // Правильный путь к расшифровке ОКВЭД
+        okveds: (currentLegalData.okveds || []).map(okv => ({
+            kod: okv.kod,
+            name: okv.name // Сохраняем правильное поле name вместо type
+        })),
         address: currentLegalData.address?.unrestricted_value,
         registrationDate: currentLegalData.state?.registration_date
     } : (inn ? { inn } : null);
@@ -886,8 +900,8 @@ window.editEnterprise = (id) => {
         
         // ОКВЭД основной с правильным форматом
         if (ent.legalData.okved) {
-            const okvedText = ent.legalData.okvedType 
-                ? `${ent.legalData.okved} - ${ent.legalData.okvedType}` 
+            const okvedText = ent.legalData.okvedName 
+                ? `${ent.legalData.okved} - ${ent.legalData.okvedName}` 
                 : ent.legalData.okved;
             document.getElementById('legalOkved').textContent = okvedText;
         } else {
@@ -897,8 +911,8 @@ window.editEnterprise = (id) => {
         // Дополнительные ОКВЭД
         if (ent.legalData.okveds && ent.legalData.okveds.length > 0) {
             const okvedsHtml = ent.legalData.okveds.map(okv => {
-                const text = okv.type 
-                    ? `<div style="margin-bottom: 5px;">• ${okv.kod} - ${okv.type}</div>` 
+                const text = okv.name 
+                    ? `<div style="margin-bottom: 5px;">• ${okv.kod} - ${okv.name}</div>` 
                     : `<div style="margin-bottom: 5px;">• ${okv.kod}</div>`;
                 return text;
             }).join('');

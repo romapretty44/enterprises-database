@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка отраслей</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2a2a4a 100%);
+            color: #fff;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .container {
+            background: rgba(30, 35, 60, 0.6);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 12px;
+            padding: 30px;
+        }
+        h1 {
+            margin-top: 0;
+            color: #6366f1;
+        }
+        button {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin: 10px 0;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);
+        }
+        #output {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        .warning { color: #fbbf24; }
+        .info { color: #60a5fa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Проверка и очистка отраслей</h1>
+        <p>Этот инструмент проверяет, нет ли "ОПК" в коллекции отраслей (industries).<br>
+        "ОПК" должен быть только в категориях!</p>
+        
+        <button onclick="checkAndClean()">🚀 Проверить и очистить</button>
+        
+        <div id="output"></div>
+    </div>
+
+    <script type="module">
+        import { db, collection, getDocs, deleteDoc, doc } from './firebase-init.js';
+
+        const INDUSTRIES_COLLECTION = 'industries';
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const line = document.createElement('div');
+            line.className = type;
+            line.textContent = message;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        async function checkAndClean() {
+            output.innerHTML = '';
+            log('🔍 Начинаем проверку коллекции industries...', 'info');
+            log('────────────────────────────────────────', 'info');
+            
+            try {
+                const querySnapshot = await getDocs(collection(db, INDUSTRIES_COLLECTION));
+                let foundOPK = false;
+                const allIndustries = [];
+                
+                for (const docSnapshot of querySnapshot.docs) {
+                    const data = docSnapshot.data();
+                    allIndustries.push(data.name);
+                    
+                    if (data.name === 'ОПК') {
+                        log(`❌ НАЙДЕНО: "ОПК" в отраслях (ID: ${docSnapshot.id})`, 'error');
+                        log('   Удаляю...', 'warning');
+                        await deleteDoc(doc(db, INDUSTRIES_COLLECTION, docSnapshot.id));
+                        log('   ✅ "ОПК" успешно удалён из отраслей!', 'success');
+                        foundOPK = true;
+                    }
+                }
+                
+                log('────────────────────────────────────────', 'info');
+                
+                if (!foundOPK) {
+                    log('✅ "ОПК" не найден в отраслях. Всё правильно!', 'success');
+                } else {
+                    log('✅ Очистка завершена успешно!', 'success');
+                }
+                
+                log('', 'info');
+                log('📋 Текущие отрасли в базе данных:', 'info');
+                const remainingSnapshot = await getDocs(collection(db, INDUSTRIES_COLLECTION));
+                remainingSnapshot.forEach((doc) => {
+                    log(`  • ${doc.data().name}`, 'info');
+                });
+                
+                log('', 'info');
+                log('✅ Проверка завершена!', 'success');
+                
+            } catch (error) {
+                log('❌ Ошибка при проверке/удалении:', 'error');
+                log(error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        window.checkAndClean = checkAndClean;
+    </script>
+</body>
+</html>
