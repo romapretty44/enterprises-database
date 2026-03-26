@@ -377,11 +377,19 @@ function renderCategoriesCheckboxes() {
     });
 }
 
-// Добавление новой категории
+// Добавление новой категории (кнопка в фильтрах на главной)
+document.getElementById('addCategoryFilterBtn').addEventListener('click', () => {
+    document.getElementById('addCategoryModal').style.display = 'flex';
+    document.getElementById('newCategoryInput').value = '';
+    document.getElementById('categoryHasDescription').checked = false;
+});
+
+// Закрытие модального окна добавления категории
 document.getElementById('closeAddCategoryModal').addEventListener('click', () => {
     document.getElementById('addCategoryModal').style.display = 'none';
 });
 
+// Сохранение новой категории
 document.getElementById('saveCategoryBtn').addEventListener('click', async () => {
     const newCategory = document.getElementById('newCategoryInput').value.trim();
     const hasDescription = document.getElementById('categoryHasDescription').checked;
