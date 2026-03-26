@@ -591,7 +591,7 @@ window.viewEnterprise = async (id) => {
         <h2>${escapeHtml(ent.name)}</h2>
         <div class="view-section">
             <h3>💼 Информация</h3>
-            <p>${escapeHtml(ent.info || 'Нет информации')}</p>
+            <p style="white-space: pre-wrap;">${escapeHtml(ent.info || 'Нет информации')}</p>
         </div>
         <div class="view-section">
             <h3>🏭 Отрасли</h3>
@@ -1394,8 +1394,8 @@ document.querySelectorAll('#categoriesFilter input').forEach(cb => {
 
 // ========== ФУНКЦИОНАЛ ВЫГРУЗКИ РАССЫЛКИ ==========
 
-// Открытие модального окна выгрузки рассылки
-document.getElementById('mailingBtn').addEventListener('click', () => {
+// Функция заполнения модального окна фильтров
+function openMailingFilterModal() {
     // Заполняем чекбоксы отраслей
     const mailingIndustriesContainer = document.getElementById('mailingIndustriesCheckboxes');
     mailingIndustriesContainer.innerHTML = industries.map(ind => `
@@ -1409,19 +1409,24 @@ document.getElementById('mailingBtn').addEventListener('click', () => {
     `).join('');
     
     document.getElementById('mailingModal').style.display = 'flex';
-});
+}
+
+// Открытие модального окна "📧 Выгрузка рассылки" (простой список)
+document.getElementById('mailingBtn').addEventListener('click', openMailingFilterModal);
+
+// Открытие модального окна "📋 Список рассылки" (нумерованный список)
+document.getElementById('mailingListBtn').addEventListener('click', openMailingFilterModal);
 
 // Закрытие модального окна выгрузки
 document.getElementById('closeMailingModal').addEventListener('click', () => {
     document.getElementById('mailingModal').style.display = 'none';
 });
 
-// Выгрузка почт
-document.getElementById('exportMailingBtn').addEventListener('click', () => {
+// Общая функция фильтрации предприятий
+function getFilteredEnterprises() {
     const selectedIndustries = Array.from(document.querySelectorAll('.mailing-industry-cb:checked')).map(cb => cb.value);
     const selectedCategories = Array.from(document.querySelectorAll('.mailing-category-cb:checked')).map(cb => cb.value);
     
-    // Фильтруем предприятия
     let filtered = enterprises;
     
     if (selectedIndustries.length > 0 || selectedCategories.length > 0) {
@@ -1436,24 +1441,29 @@ document.getElementById('exportMailingBtn').addEventListener('click', () => {
         });
     }
     
-    // Формируем нумерованный список с названиями компаний
-    const mailingList = [];
+    return filtered.filter(ent => ent.mailingEmails && ent.mailingEmails.length > 0);
+}
+
+// Выгрузка почт (простой список через запятую)
+document.getElementById('exportMailingBtn').addEventListener('click', () => {
+    const filtered = getFilteredEnterprises();
+    
+    // Собираем все почты в простой список
+    const allEmails = [];
     let totalEmailsCount = 0;
-    let index = 1;
     
     filtered.forEach(ent => {
-        if (ent.mailingEmails && ent.mailingEmails.length > 0) {
-            const companyName = ent.name;
-            const emails = ent.mailingEmails.join(', ');
-            mailingList.push(`${index}. ${companyName} - ${emails}`);
-            totalEmailsCount += ent.mailingEmails.length;
-            index++;
-        }
+        ent.mailingEmails.forEach(email => {
+            if (!allEmails.includes(email)) {
+                allEmails.push(email);
+            }
+        });
+        totalEmailsCount += ent.mailingEmails.length;
     });
     
-    // Показываем результат
-    const resultText = mailingList.join('\n');
-    document.getElementById('mailingCount').textContent = `Всего предприятий: ${mailingList.length} | Всего почт: ${totalEmailsCount}`;
+    // Показываем результат (простой список через запятую)
+    const resultText = allEmails.join(', ');
+    document.getElementById('mailingCount').textContent = `Всего предприятий: ${filtered.length} | Всего почт: ${totalEmailsCount}`;
     document.getElementById('mailingEmailsText').value = resultText;
     
     document.getElementById('mailingModal').style.display = 'none';
