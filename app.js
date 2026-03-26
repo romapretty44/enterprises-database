@@ -53,6 +53,7 @@ let editingId = null;
 let contactsCounter = 0;
 let productsCounter = 0;
 let mailingEmailsCounter = 0; // Счётчик для почт рассылки
+let currentMailingMode = 'simple'; // 'simple' или 'numbered' - режим выгрузки почт
 let currentLegalData = null; // Хранение юридических данных из ЕГРЮЛ
 
 // Проверка авторизации
@@ -1411,11 +1412,11 @@ function openMailingFilterModal() {
     document.getElementById('mailingModal').style.display = 'flex';
 }
 
-// Открытие модального окна "📧 Выгрузка рассылки" (простой список)
-document.getElementById('mailingBtn').addEventListener('click', openMailingFilterModal);
-
 // Открытие модального окна "📋 Список рассылки" (нумерованный список)
-document.getElementById('mailingListBtn').addEventListener('click', openMailingFilterModal);
+document.getElementById('mailingListBtn').addEventListener('click', () => {
+    currentMailingMode = 'numbered';
+    openMailingFilterModal();
+});
 
 // Закрытие модального окна выгрузки
 document.getElementById('closeMailingModal').addEventListener('click', () => {
@@ -1444,25 +1445,45 @@ function getFilteredEnterprises() {
     return filtered.filter(ent => ent.mailingEmails && ent.mailingEmails.length > 0);
 }
 
-// Выгрузка почт (простой список через запятую)
+// Выгрузка почт (универсальная функция с выбором формата)
 document.getElementById('exportMailingBtn').addEventListener('click', () => {
     const filtered = getFilteredEnterprises();
     
-    // Собираем все почты в простой список
-    const allEmails = [];
+    let resultText = '';
     let totalEmailsCount = 0;
     
-    filtered.forEach(ent => {
-        ent.mailingEmails.forEach(email => {
-            if (!allEmails.includes(email)) {
-                allEmails.push(email);
-            }
+    if (currentMailingMode === 'simple') {
+        // Простой список через запятую (для BCC)
+        const allEmails = [];
+        
+        filtered.forEach(ent => {
+            ent.mailingEmails.forEach(email => {
+                if (!allEmails.includes(email)) {
+                    allEmails.push(email);
+                }
+            });
+            totalEmailsCount += ent.mailingEmails.length;
         });
-        totalEmailsCount += ent.mailingEmails.length;
-    });
+        
+        resultText = allEmails.join(', ');
+        
+    } else if (currentMailingMode === 'numbered') {
+        // Нумерованный список с названиями компаний (для учёта)
+        const mailingList = [];
+        let index = 1;
+        
+        filtered.forEach(ent => {
+            const companyName = ent.name;
+            const emails = ent.mailingEmails.join(', ');
+            mailingList.push(`${index}. ${companyName} - ${emails}`);
+            totalEmailsCount += ent.mailingEmails.length;
+            index++;
+        });
+        
+        resultText = mailingList.join('\n');
+    }
     
-    // Показываем результат (простой список через запятую)
-    const resultText = allEmails.join(', ');
+    // Показываем результат
     document.getElementById('mailingCount').textContent = `Всего предприятий: ${filtered.length} | Всего почт: ${totalEmailsCount}`;
     document.getElementById('mailingEmailsText').value = resultText;
     
@@ -1525,7 +1546,7 @@ document.getElementById('deselectAllBtn').addEventListener('click', () => {
     updateSelectionPanel();
 });
 
-// Выгрузка почт выбранных предприятий
+// Выгрузка почт выбранных предприятий (простой список)
 document.getElementById('exportSelectedMailingBtn').addEventListener('click', () => {
     const selectedIds = Array.from(document.querySelectorAll('.enterprise-select-cb:checked'))
         .map(cb => cb.dataset.enterpriseId);
@@ -1536,18 +1557,16 @@ document.getElementById('exportSelectedMailingBtn').addEventListener('click', ()
     }
     
     // Фильтруем предприятия по выбранным ID
-    const selectedEnterprises = enterprises.filter(ent => selectedIds.includes(ent.id));
+    const selectedEnterprises = enterprises.filter(ent => selectedIds.includes(ent.id) && ent.mailingEmails && ent.mailingEmails.length > 0);
     
-    // Собираем все почты в простой список
+    // Собираем все почты в простой список (для BCC)
     const allEmails = [];
     selectedEnterprises.forEach(ent => {
-        if (ent.mailingEmails && ent.mailingEmails.length > 0) {
-            ent.mailingEmails.forEach(email => {
-                if (!allEmails.includes(email)) {
-                    allEmails.push(email);
-                }
-            });
-        }
+        ent.mailingEmails.forEach(email => {
+            if (!allEmails.includes(email)) {
+                allEmails.push(email);
+            }
+        });
     });
     
     // Показываем результат (простой список через запятую)
@@ -1555,6 +1574,40 @@ document.getElementById('exportSelectedMailingBtn').addEventListener('click', ()
     const totalCount = allEmails.length;
     
     document.getElementById('mailingCount').textContent = `Выбрано предприятий: ${selectedIds.length} | Всего почт: ${totalCount}`;
+    document.getElementById('mailingEmailsText').value = resultText;
+    document.getElementById('mailingResultModal').style.display = 'flex';
+});
+
+// Выгрузка списка рассылки выбранных предприятий (нумерованный список)
+document.getElementById('exportSelectedMailingListBtn').addEventListener('click', () => {
+    const selectedIds = Array.from(document.querySelectorAll('.enterprise-select-cb:checked'))
+        .map(cb => cb.dataset.enterpriseId);
+    
+    if (selectedIds.length === 0) {
+        alert('Выберите хотя бы одно предприятие!');
+        return;
+    }
+    
+    // Фильтруем предприятия по выбранным ID
+    const selectedEnterprises = enterprises.filter(ent => selectedIds.includes(ent.id) && ent.mailingEmails && ent.mailingEmails.length > 0);
+    
+    // Формируем нумерованный список с названиями
+    const mailingList = [];
+    let totalEmailsCount = 0;
+    let index = 1;
+    
+    selectedEnterprises.forEach(ent => {
+        const companyName = ent.name;
+        const emails = ent.mailingEmails.join(', ');
+        mailingList.push(`${index}. ${companyName} - ${emails}`);
+        totalEmailsCount += ent.mailingEmails.length;
+        index++;
+    });
+    
+    // Показываем результат (нумерованный список)
+    const resultText = mailingList.join('\n');
+    
+    document.getElementById('mailingCount').textContent = `Выбрано предприятий: ${selectedIds.length} | Всего почт: ${totalEmailsCount}`;
     document.getElementById('mailingEmailsText').value = resultText;
     document.getElementById('mailingResultModal').style.display = 'flex';
 });
