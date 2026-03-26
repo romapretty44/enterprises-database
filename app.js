@@ -52,6 +52,7 @@ let categories = [];
 let editingId = null;
 let contactsCounter = 0;
 let productsCounter = 0;
+let mailingEmailsCounter = 0; // Счётчик для почт рассылки
 let currentLegalData = null; // Хранение юридических данных из ЕГРЮЛ
 
 // Проверка авторизации
@@ -199,6 +200,16 @@ document.getElementById('loadFromEgrulBtn').addEventListener('click', async () =
         document.getElementById('legalRegDate').textContent = data.state && data.state.registration_date
             ? new Date(data.state.registration_date).toLocaleDateString('ru-RU')
             : '-';
+        
+        // Выручка предприятия
+        if (data.finance && data.finance.revenue !== null && data.finance.revenue !== undefined) {
+            const revenue = data.finance.revenue;
+            const year = data.finance.year || 'н/д';
+            const formattedRevenue = new Intl.NumberFormat('ru-RU').format(revenue);
+            document.getElementById('legalRevenue').textContent = `${formattedRevenue} ₽ (${year} г.)`;
+        } else {
+            document.getElementById('legalRevenue').textContent = 'Нет данных';
+        }
         
         // Показываем секцию с юридической информацией
         document.getElementById('legalInfoSection').style.display = 'block';
@@ -662,6 +673,16 @@ window.viewEnterprise = async (id) => {
         html += '</div>';
     }
     
+    // Почты для рассылок
+    if (ent.mailingEmails && ent.mailingEmails.length > 0) {
+        html += '<div class="view-section"><h3>📧 Почты для рассылок</h3>';
+        html += '<div style="background: rgba(0, 0, 0, 0.2); padding: 15px; border-radius: 8px;">';
+        ent.mailingEmails.forEach(email => {
+            html += `<div style="margin-bottom: 8px; color: #d1d5db;">✉️ ${escapeHtml(email)}</div>`;
+        });
+        html += '</div></div>';
+    }
+    
     // Юридическая информация
     if (ent.legalData) {
         html += '<div class="view-section"><h3>⚖️ Юридическая информация</h3>';
@@ -726,6 +747,21 @@ window.viewEnterprise = async (id) => {
             </div>`;
         }
         
+        // Выручка предприятия
+        if (ent.legalData.revenue !== null && ent.legalData.revenue !== undefined) {
+            const formattedRevenue = new Intl.NumberFormat('ru-RU').format(ent.legalData.revenue);
+            const year = ent.legalData.revenueYear || 'н/д';
+            html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
+                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">Выручка предприятия:</span>
+                <span style="color: #d1d5db;">${formattedRevenue} ₽ (${year} г.)</span>
+            </div>`;
+        } else {
+            html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
+                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">Выручка предприятия:</span>
+                <span style="color: #d1d5db;">Нет данных</span>
+            </div>`;
+        }
+        
         html += '</div></div>';
     }
 
@@ -771,6 +807,10 @@ document.getElementById('addBtn').addEventListener('click', () => {
     document.getElementById('contactsList').innerHTML = '';
     contactsCounter = 0;
     
+    // Сброс почт для рассылок
+    document.getElementById('mailingEmailsList').innerHTML = '';
+    mailingEmailsCounter = 0;
+    
     // Скрыть юридическую информацию
     document.getElementById('legalInfoSection').style.display = 'none';
     
@@ -806,6 +846,29 @@ window.removeContact = (contactId) => {
     const contactForm = document.querySelector(`[data-contact-id="${contactId}"]`);
     if (contactForm) contactForm.remove();
 };
+
+// Добавление почты для рассылки
+document.getElementById('addMailingEmailBtn').addEventListener('click', () => {
+    const emailId = mailingEmailsCounter++;
+    const emailHTML = `
+        <div class="contact-form" data-mailing-email-id="${emailId}" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+            <input type="email" placeholder="email@example.com" class="mailing-email-input" style="flex: 1;">
+            <button type="button" class="remove-contact-btn" onclick="removeMailingEmail(${emailId})">❌</button>
+        </div>
+    `;
+    document.getElementById('mailingEmailsList').insertAdjacentHTML('beforeend', emailHTML);
+});
+
+window.removeMailingEmail = (emailId) => {
+    const emailForm = document.querySelector(`[data-mailing-email-id="${emailId}"]`);
+    if (emailForm) emailForm.remove();
+};
+
+// Валидация email
+function isValidEmail(email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+}
 
 // Сохранить предприятие
 document.getElementById('saveBtn').addEventListener('click', async () => {
@@ -882,6 +945,20 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         }
     });
 
+    // Почты для рассылок
+    const mailingEmails = [];
+    document.querySelectorAll('.mailing-email-input').forEach(input => {
+        const email = input.value.trim();
+        if (email) {
+            if (isValidEmail(email)) {
+                mailingEmails.push(email);
+            } else {
+                alert(`Некорректный email: ${email}`);
+                throw new Error('Invalid email');
+            }
+        }
+    });
+
     // Юридическая информация (если загружена из ЕГРЮЛ)
     const inn = document.getElementById('enterpriseInn').value.trim();
     const legalData = currentLegalData ? {
@@ -892,7 +969,9 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         okvedName: currentLegalData.okvedName || '', // Расшифровка получена через API suggest/okved2
         okveds: currentLegalData.okveds || [], // Уже содержит { kod, name } из API
         address: currentLegalData.address?.unrestricted_value,
-        registrationDate: currentLegalData.state?.registration_date
+        registrationDate: currentLegalData.state?.registration_date,
+        revenue: currentLegalData.finance?.revenue || null, // Выручка в рублях
+        revenueYear: currentLegalData.finance?.year || null // Год данных о выручке
     } : (inn ? { inn } : null);
 
     try {
@@ -906,6 +985,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
             categories: enterpriseCategories,
             categoriesDescriptions,
             contacts,
+            mailingEmails, // Почты для рассылок
             legalData,
             updatedAt: new Date().toISOString()
         };
@@ -971,6 +1051,16 @@ window.editEnterprise = (id) => {
         document.getElementById('legalRegDate').textContent = ent.legalData.registrationDate
             ? new Date(ent.legalData.registrationDate).toLocaleDateString('ru-RU')
             : '-';
+        
+        // Выручка
+        if (ent.legalData.revenue !== null && ent.legalData.revenue !== undefined) {
+            const formattedRevenue = new Intl.NumberFormat('ru-RU').format(ent.legalData.revenue);
+            const year = ent.legalData.revenueYear || 'н/д';
+            document.getElementById('legalRevenue').textContent = `${formattedRevenue} ₽ (${year} г.)`;
+        } else {
+            document.getElementById('legalRevenue').textContent = 'Нет данных';
+        }
+        
         document.getElementById('legalInfoSection').style.display = 'block';
     } else {
         document.getElementById('legalInfoSection').style.display = 'none';
@@ -1061,6 +1151,24 @@ window.editEnterprise = (id) => {
                 </div>
             `;
             contactsList.insertAdjacentHTML('beforeend', contactHTML);
+        });
+    }
+    
+    // Почты для рассылок
+    const mailingEmailsList = document.getElementById('mailingEmailsList');
+    mailingEmailsList.innerHTML = '';
+    mailingEmailsCounter = 0;
+    
+    if (ent.mailingEmails) {
+        ent.mailingEmails.forEach(email => {
+            const emailId = mailingEmailsCounter++;
+            const emailHTML = `
+                <div class="contact-form" data-mailing-email-id="${emailId}" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
+                    <input type="email" placeholder="email@example.com" class="mailing-email-input" value="${escapeHtml(email)}" style="flex: 1;">
+                    <button type="button" class="remove-contact-btn" onclick="removeMailingEmail(${emailId})">❌</button>
+                </div>
+            `;
+            mailingEmailsList.insertAdjacentHTML('beforeend', emailHTML);
         });
     }
     
@@ -1208,7 +1316,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
     }
 
     // Формируем CSV
-    let csv = 'Название;Информация;Отрасли;Категории;ИНН;ОГРН;ОКВЭД;Юридический адрес;Контакты\n';
+    let csv = 'Название;Информация;Отрасли;Категории;ИНН;ОГРН;ОКВЭД;Юридический адрес;Выручка;Контакты\n';
     
     enterprises.forEach(ent => {
         const name = (ent.name || '').replace(/;/g, ',');
@@ -1239,16 +1347,16 @@ document.getElementById('exportBtn').addEventListener('click', () => {
         // ОКВЭД в формате: КОД - НАИМЕНОВАНИЕ
         const okvedList = [];
         if (ent.legalData?.okved) {
-            const mainOkved = ent.legalData.okvedType 
-                ? `${ent.legalData.okved} - ${ent.legalData.okvedType}` 
+            const mainOkved = ent.legalData.okvedName 
+                ? `${ent.legalData.okved} - ${ent.legalData.okvedName}` 
                 : ent.legalData.okved;
             okvedList.push(mainOkved);
         }
         // Дополнительные ОКВЭД
         if (ent.legalData?.okveds && ent.legalData.okveds.length > 0) {
             ent.legalData.okveds.forEach(okv => {
-                const okvedText = okv.type 
-                    ? `${okv.kod} - ${okv.type}` 
+                const okvedText = okv.name 
+                    ? `${okv.kod} - ${okv.name}` 
                     : okv.kod;
                 okvedList.push(okvedText);
             });
@@ -1257,11 +1365,21 @@ document.getElementById('exportBtn').addEventListener('click', () => {
         
         const address = (ent.legalData?.address || '').replace(/;/g, ',');
         
+        // Выручка
+        let revenueStr = '';
+        if (ent.legalData?.revenue !== null && ent.legalData?.revenue !== undefined) {
+            const formattedRevenue = new Intl.NumberFormat('ru-RU').format(ent.legalData.revenue);
+            const year = ent.legalData.revenueYear || 'н/д';
+            revenueStr = `${formattedRevenue} ₽ (${year} г.)`;
+        } else {
+            revenueStr = 'Нет данных';
+        }
+        
         const contacts = (ent.contacts || []).map(c => 
             `${c.fullName} (${c.position}) - ${c.workPhone}, ${c.email}, ${c.mobilePhone}`
         ).join(' | ').replace(/;/g, ',');
         
-        csv += `${name};${info};${industries};${categoriesStr};${inn};${ogrn};${okvedStr};${address};${contacts}\n`;
+        csv += `${name};${info};${industries};${categoriesStr};${inn};${ogrn};${okvedStr};${address};${revenueStr};${contacts}\n`;
     });
 
     // Скачивание
@@ -1279,6 +1397,91 @@ document.getElementById('searchInput').addEventListener('input', displayEnterpri
 
 document.querySelectorAll('#categoriesFilter input').forEach(cb => {
     cb.addEventListener('change', displayEnterprises);
+});
+
+// ========== ФУНКЦИОНАЛ ВЫГРУЗКИ РАССЫЛКИ ==========
+
+// Открытие модального окна выгрузки рассылки
+document.getElementById('mailingBtn').addEventListener('click', () => {
+    // Заполняем чекбоксы отраслей
+    const mailingIndustriesContainer = document.getElementById('mailingIndustriesCheckboxes');
+    mailingIndustriesContainer.innerHTML = industries.map(ind => `
+        <label><input type="checkbox" class="mailing-industry-cb" value="${ind}"> ${ind}</label>
+    `).join('');
+    
+    // Заполняем чекбоксы категорий
+    const mailingCategoriesContainer = document.getElementById('mailingCategoriesCheckboxes');
+    mailingCategoriesContainer.innerHTML = categories.map(cat => `
+        <label><input type="checkbox" class="mailing-category-cb" value="${cat.id}"> ${escapeHtml(cat.name)}</label>
+    `).join('');
+    
+    document.getElementById('mailingModal').style.display = 'flex';
+});
+
+// Закрытие модального окна выгрузки
+document.getElementById('closeMailingModal').addEventListener('click', () => {
+    document.getElementById('mailingModal').style.display = 'none';
+});
+
+// Выгрузка почт
+document.getElementById('exportMailingBtn').addEventListener('click', () => {
+    const selectedIndustries = Array.from(document.querySelectorAll('.mailing-industry-cb:checked')).map(cb => cb.value);
+    const selectedCategories = Array.from(document.querySelectorAll('.mailing-category-cb:checked')).map(cb => cb.value);
+    
+    // Фильтруем предприятия
+    let filtered = enterprises;
+    
+    if (selectedIndustries.length > 0 || selectedCategories.length > 0) {
+        filtered = enterprises.filter(ent => {
+            const matchesIndustries = selectedIndustries.length === 0 || 
+                                     selectedIndustries.some(ind => ent.industries && ent.industries.includes(ind));
+            
+            const matchesCategories = selectedCategories.length === 0 || 
+                                     selectedCategories.some(cat => ent.categories && ent.categories[cat]);
+            
+            return matchesIndustries && matchesCategories;
+        });
+    }
+    
+    // Собираем все почты
+    const allEmails = [];
+    filtered.forEach(ent => {
+        if (ent.mailingEmails && ent.mailingEmails.length > 0) {
+            ent.mailingEmails.forEach(email => {
+                if (!allEmails.includes(email)) {
+                    allEmails.push(email);
+                }
+            });
+        }
+    });
+    
+    // Показываем результат
+    document.getElementById('mailingCount').textContent = `Всего почт: ${allEmails.length}`;
+    document.getElementById('mailingEmailsText').value = allEmails.join(', ');
+    
+    document.getElementById('mailingModal').style.display = 'none';
+    document.getElementById('mailingResultModal').style.display = 'flex';
+});
+
+// Закрытие модального окна результата
+document.getElementById('closeMailingResultModal').addEventListener('click', () => {
+    document.getElementById('mailingResultModal').style.display = 'none';
+});
+
+// Копирование почт
+document.getElementById('copyMailingBtn').addEventListener('click', () => {
+    const textarea = document.getElementById('mailingEmailsText');
+    textarea.select();
+    document.execCommand('copy');
+    
+    // Меняем текст кнопки на "Скопировано!"
+    const btn = document.getElementById('copyMailingBtn');
+    const originalText = btn.textContent;
+    btn.textContent = '✅ Скопировано!';
+    
+    setTimeout(() => {
+        btn.textContent = originalText;
+    }, 2000);
 });
 
 // Helper функция
