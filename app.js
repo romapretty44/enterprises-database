@@ -60,7 +60,7 @@ async function loadIndustries() {
             const defaultIndustries = [
                 'Промышленность', 'Судоремонт', 'Добыча', 'Обработка',
                 'Лёгкая промышленность', 'Рыбная отрасль', 'Металлургия',
-                'Лесная промышленность', 'ОПК', 'Машиностроение', 'АПК', 'Проект'
+                'Лесная промышленность', 'Машиностроение', 'АПК', 'Проект'
             ];
             
             for (const ind of defaultIndustries) {
@@ -326,6 +326,7 @@ window.viewEnterprise = async (id) => {
     // Категории
     if (ent.categories) {
         html += '<div class="view-section"><h3>📂 Категории</h3><ul>';
+        if (ent.categories.opk) html += '<li>✅ ОПК</li>';
         if (ent.categories.categorized) html += '<li>✅ Категорируется</li>';
         if (ent.categories.productivity) html += '<li>✅ Участник производительности труда</li>';
         if (ent.categories.professionalism) html += '<li>✅ Участник профессионалитета</li>';
@@ -374,6 +375,7 @@ document.getElementById('addBtn').addEventListener('click', () => {
     updateProductsDatalist();
     
     // Сброс категорий
+    document.getElementById('catOPK').checked = false;
     document.getElementById('catCategorized').checked = false;
     document.getElementById('catProductivity').checked = false;
     document.getElementById('catProfessionalism').checked = false;
@@ -437,6 +439,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
 
     // Категории
     const categories = {
+        opk: document.getElementById('catOPK').checked,
         categorized: document.getElementById('catCategorized').checked,
         productivity: document.getElementById('catProductivity').checked,
         professionalism: document.getElementById('catProfessionalism').checked,
@@ -581,11 +584,14 @@ window.editEnterprise = (id) => {
     
     // Категории
     if (ent.categories) {
+        document.getElementById('catOPK').checked = ent.categories.opk || false;
         document.getElementById('catCategorized').checked = ent.categories.categorized || false;
         document.getElementById('catProductivity').checked = ent.categories.productivity || false;
         document.getElementById('catProfessionalism').checked = ent.categories.professionalism || false;
         document.getElementById('catRegionalSupport').checked = ent.categories.regionalSupport || false;
         document.getElementById('catFederalSupport').checked = ent.categories.federalSupport || false;
+    } else {
+        document.getElementById('catOPK').checked = false;
     }
     
     document.getElementById('regionalSupportDesc').value = ent.regionalSupportDesc || '';
@@ -689,7 +695,26 @@ window.restoreEnterprise = async (trashId, originalId) => {
         // Удаляем из корзины
         await deleteDoc(doc(db, TRASH_COLLECTION, trashId));
         
-        document.getElementById('trashModal').style.display = 'none';
+        // Удаляем из локального массива
+        trashedEnterprises = trashedEnterprises.filter(e => e.id !== trashId);
+        
+        // Обновляем отображение корзины
+        const container = document.getElementById('trashContainer');
+        if (trashedEnterprises.length === 0) {
+            container.innerHTML = '<p style="text-align: center;">Корзина пуста</p>';
+        } else {
+            container.innerHTML = trashedEnterprises.map(ent => `
+                <div class="enterprise-card">
+                    <h3>${escapeHtml(ent.name)}</h3>
+                    <p>Удалено: ${new Date(ent.deletedAt).toLocaleString('ru-RU')}</p>
+                    <div class="card-actions">
+                        <button onclick="restoreEnterprise('${ent.id}', '${ent.originalId}')">♻️ Восстановить</button>
+                        <button onclick="deletePermanently('${ent.id}')" style="background: #c0392b;">🗑️ Удалить навсегда</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
         alert('Предприятие восстановлено!');
     } catch (error) {
         console.error("Ошибка восстановления:", error);
@@ -702,7 +727,27 @@ window.deletePermanently = async (trashId) => {
 
     try {
         await deleteDoc(doc(db, TRASH_COLLECTION, trashId));
-        document.getElementById('trashModal').style.display = 'none';
+        
+        // Удаляем из локального массива
+        trashedEnterprises = trashedEnterprises.filter(e => e.id !== trashId);
+        
+        // Обновляем отображение корзины
+        const container = document.getElementById('trashContainer');
+        if (trashedEnterprises.length === 0) {
+            container.innerHTML = '<p style="text-align: center;">Корзина пуста</p>';
+        } else {
+            container.innerHTML = trashedEnterprises.map(ent => `
+                <div class="enterprise-card">
+                    <h3>${escapeHtml(ent.name)}</h3>
+                    <p>Удалено: ${new Date(ent.deletedAt).toLocaleString('ru-RU')}</p>
+                    <div class="card-actions">
+                        <button onclick="restoreEnterprise('${ent.id}', '${ent.originalId}')">♻️ Восстановить</button>
+                        <button onclick="deletePermanently('${ent.id}')" style="background: #c0392b;">🗑️ Удалить навсегда</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
         alert('Предприятие удалено навсегда');
     } catch (error) {
         console.error("Ошибка окончательного удаления:", error);
@@ -727,6 +772,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
         
         const categories = [];
         if (ent.categories) {
+            if (ent.categories.opk) categories.push('ОПК');
             if (ent.categories.categorized) categories.push('Категорируется');
             if (ent.categories.productivity) categories.push('Производительность труда');
             if (ent.categories.professionalism) categories.push('Профессионалитет');
