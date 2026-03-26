@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>База предприятий</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -25,6 +26,7 @@
             <div class="header-actions">
                 <button id="addBtn" class="add-btn">➕ Добавить предприятие</button>
                 <button id="exportBtn" class="export-btn">📊 Экспорт в Excel</button>
+                <button id="mailingBtn" class="export-btn">📧 Выгрузка рассылки</button>
                 <button id="trashBtn" class="trash-btn">🗑️ Корзина</button>
                 <button id="logoutBtn" class="logout-btn">🚪 Выйти</button>
             </div>
@@ -111,6 +113,10 @@
                             <span class="legal-label">Дата регистрации:</span>
                             <span id="legalRegDate">-</span>
                         </div>
+                        <div class="legal-info-item">
+                            <span class="legal-label">Выручка предприятия:</span>
+                            <span id="legalRevenue">-</span>
+                        </div>
                     </div>
                 </div>
                 
@@ -156,6 +162,12 @@
                     <div id="contactsList"></div>
                     <button type="button" id="addContactBtn" class="add-contact-btn">➕ Добавить контакт</button>
                 </div>
+
+                <div class="form-section">
+                    <label>📧 Почты для рассылок</label>
+                    <div id="mailingEmailsList"></div>
+                    <button type="button" id="addMailingEmailBtn" class="add-contact-btn">➕ Добавить почту</button>
+                </div>
                 
                 <button id="saveBtn" class="save-btn">💾 Сохранить</button>
             </div>
@@ -199,6 +211,45 @@
                     <span>Категория имеет поле для описания</span>
                 </label>
                 <button id="saveCategoryBtn" class="save-btn">Добавить</button>
+            </div>
+        </div>
+
+        <!-- Модальное окно выгрузки рассылки -->
+        <div id="mailingModal" class="modal">
+            <div class="modal-content modal-small">
+                <span id="closeMailingModal" class="close">&times;</span>
+                <h2>📧 Выгрузка почт для рассылки</h2>
+                
+                <div class="form-section">
+                    <label>🏭 Выберите отрасли:</label>
+                    <div id="mailingIndustriesCheckboxes" class="filter-checkboxes"></div>
+                </div>
+
+                <div class="form-section">
+                    <label>📂 Выберите категории:</label>
+                    <div id="mailingCategoriesCheckboxes" class="filter-checkboxes"></div>
+                </div>
+
+                <p style="color: #9ca3af; font-size: 0.9em; margin: 15px 0;">
+                    💡 Если ничего не выбрано, будут выгружены почты всех предприятий
+                </p>
+
+                <button id="exportMailingBtn" class="save-btn">📧 Выгрузить почты</button>
+            </div>
+        </div>
+
+        <!-- Модальное окно результата выгрузки -->
+        <div id="mailingResultModal" class="modal">
+            <div class="modal-content modal-small">
+                <span id="closeMailingResultModal" class="close">&times;</span>
+                <h2>📧 Почты для рассылки</h2>
+                
+                <div style="background: rgba(0, 0, 0, 0.3); padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p id="mailingCount" style="color: #4ade80; font-weight: 600; margin-bottom: 15px;">Всего почт: 0</p>
+                    <textarea id="mailingEmailsText" readonly style="width: 100%; min-height: 200px; padding: 15px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; color: #d1d5db; font-family: monospace; resize: vertical;"></textarea>
+                </div>
+
+                <button id="copyMailingBtn" class="save-btn">📋 Копировать все почты</button>
             </div>
         </div>
 
