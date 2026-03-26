@@ -1,10 +1,8 @@
-// Простое облачное хранилище через JSONBin.io API
-const API_KEY = '$2a$10$Xw8mKGvhQN4KdHK7xHqJb.qN5YZzWqN3YZzWqN3YZzWqN3YZzWqN3Y';
-const BIN_ID = 'enterprises-db-' + btoa('romapretty44').slice(0, 20);
-const API_URL = 'https://api.jsonbin.io/v3/b';
-
-// Проверка авторизации
+// Константа для ключа хранилища
+const STORAGE_KEY = 'enterprises_cloud_db_v1';
 const PASSWORD = '444455555';
+
+// DOM элементы авторизации
 const loginScreen = document.getElementById('loginScreen');
 const loginForm = document.getElementById('loginForm');
 const passwordInput = document.getElementById('passwordInput');
@@ -12,13 +10,17 @@ const loginError = document.getElementById('loginError');
 const container = document.querySelector('.container');
 const syncStatus = document.getElementById('syncStatus');
 
-// Проверяем, авторизован ли пользователь
+// Хранилище данных
+let enterprises = [];
+
+// Проверяем авторизацию
 if (localStorage.getItem('authenticated') === 'true') {
     showApp();
 } else {
     loginScreen.style.display = 'flex';
 }
 
+// Обработка входа
 loginForm.addEventListener('submit', (e) => {
     e.preventDefault();
     if (passwordInput.value === PASSWORD) {
@@ -39,11 +41,7 @@ function showApp() {
     initApp();
 }
 
-// Хранилище данных
-let enterprises = [];
-const dbKey = 'enterprises_cloud_db_v1';
-
-// DOM элементы
+// DOM элементы приложения
 const modal = document.getElementById('modal');
 const addBtn = document.getElementById('addBtn');
 const closeBtn = document.querySelector('.close');
@@ -53,81 +51,70 @@ const searchInput = document.getElementById('searchInput');
 const enterprisesList = document.getElementById('enterprisesList');
 const filterCheckboxes = document.querySelectorAll('.filter-checkbox');
 
-async function initApp() {
-    // Загружаем данные с сервера
-    await loadFromCloud();
-    
-    // Инициализация
+function initApp() {
+    // Загружаем данные
+    loadData();
     renderEnterprises();
     
     // Автообновление каждые 10 секунд
-    setInterval(async () => {
-        await loadFromCloud(true);
+    setInterval(() => {
+        loadData(true);
     }, 10000);
     
     // События
-    addBtn.addEventListener('click', () => {
-        openModal();
-    });
-
+    addBtn.addEventListener('click', () => openModal());
     closeBtn.addEventListener('click', closeModal);
     cancelBtn.addEventListener('click', closeModal);
-
+    
     window.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            closeModal();
-        }
+        if (e.target === modal) closeModal();
     });
-
+    
     enterpriseForm.addEventListener('submit', (e) => {
         e.preventDefault();
         saveEnterprise();
     });
-
+    
     searchInput.addEventListener('input', renderEnterprises);
-
+    
     filterCheckboxes.forEach(checkbox => {
         checkbox.addEventListener('change', renderEnterprises);
     });
 }
 
-// Загрузка данных из облака
-async function loadFromCloud(silent = false) {
+// Загрузка данных из localStorage
+function loadData(silent = false) {
     if (!silent) {
         syncStatus.textContent = '🔄 Загрузка...';
     }
     
     try {
-        const stored = localStorage.getItem(dbKey);
+        const stored = localStorage.getItem(STORAGE_KEY);
         
         if (stored) {
-            try {
-                const data = JSON.parse(stored);
-                enterprises = data.enterprises || [];
-                console.log('Загружено предприятий:', enterprises.length);
-            } catch (e) {
-                console.error('Ошибка парсинга данных:', e);
-                enterprises = [];
-            }
+            const data = JSON.parse(stored);
+            enterprises = data.enterprises || [];
+            console.log('✅ Загружено предприятий:', enterprises.length);
         } else {
-            console.log('Данных нет, создаём пустой массив');
             enterprises = [];
-            // Сразу сохраняем пустую структуру
-            await saveToCloud();
+            console.log('ℹ️ Данных нет, создан пустой массив');
+            saveData(); // Сохраняем пустую структуру
         }
         
         syncStatus.textContent = '✅ Синхронизировано';
+        
         if (!silent) {
             renderEnterprises();
         }
     } catch (error) {
-        console.error('Ошибка загрузки:', error);
-        syncStatus.textContent = '⚠️ Ошибка синхронизации';
+        console.error('❌ Ошибка загрузки:', error);
+        syncStatus.textContent = '⚠️ Ошибка загрузки';
+        enterprises = [];
     }
 }
 
-// Сохранение в облако
-async function saveToCloud() {
+// Сохранение данных в localStorage
+function saveData() {
     syncStatus.textContent = '💾 Сохранение...';
     
     try {
@@ -136,15 +123,13 @@ async function saveToCloud() {
             lastUpdate: new Date().toISOString()
         };
         
-        const jsonData = JSON.stringify(data);
-        localStorage.setItem(dbKey, jsonData);
-        console.log('Сохранено предприятий:', enterprises.length);
-        console.log('Данные:', jsonData);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        console.log('✅ Сохранено предприятий:', enterprises.length);
         
-        // Эмуляция события storage для других вкладок
+        // Уведомляем другие вкладки
         window.dispatchEvent(new StorageEvent('storage', {
-            key: dbKey,
-            newValue: jsonData
+            key: STORAGE_KEY,
+            newValue: JSON.stringify(data)
         }));
         
         syncStatus.textContent = '✅ Сохранено';
@@ -152,24 +137,25 @@ async function saveToCloud() {
             syncStatus.textContent = '✅ Синхронизировано';
         }, 1000);
     } catch (error) {
-        console.error('Ошибка сохранения:', error);
+        console.error('❌ Ошибка сохранения:', error);
         syncStatus.textContent = '⚠️ Ошибка сохранения';
     }
 }
 
 // Слушаем изменения из других вкладок
 window.addEventListener('storage', (e) => {
-    if (e.key === dbKey && e.newValue) {
+    if (e.key === STORAGE_KEY && e.newValue) {
         try {
             const data = JSON.parse(e.newValue);
             enterprises = data.enterprises || [];
             renderEnterprises();
+            console.log('🔄 Обновлено из другой вкладки');
             syncStatus.textContent = '🔄 Обновлено из другой вкладки';
             setTimeout(() => {
                 syncStatus.textContent = '✅ Синхронизировано';
             }, 2000);
         } catch (error) {
-            console.error('Ошибка парсинга:', error);
+            console.error('❌ Ошибка синхронизации:', error);
         }
     }
 });
@@ -198,7 +184,7 @@ function closeModal() {
     enterpriseForm.reset();
 }
 
-async function saveEnterprise() {
+function saveEnterprise() {
     const id = document.getElementById('enterpriseId').value;
     const name = document.getElementById('name').value.trim();
     const description = document.getElementById('description').value.trim();
@@ -216,11 +202,13 @@ async function saveEnterprise() {
     }
     
     if (id) {
+        // Редактирование
         const index = enterprises.findIndex(e => e.id === id);
         if (index !== -1) {
             enterprises[index] = { id, name, description, industries };
         }
     } else {
+        // Добавление
         const newEnterprise = {
             id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
             name,
@@ -230,15 +218,15 @@ async function saveEnterprise() {
         enterprises.push(newEnterprise);
     }
     
-    await saveToCloud();
+    saveData();
     renderEnterprises();
     closeModal();
 }
 
-async function deleteEnterprise(id) {
+function deleteEnterprise(id) {
     if (confirm('Вы уверены, что хотите удалить это предприятие?')) {
         enterprises = enterprises.filter(e => e.id !== id);
-        await saveToCloud();
+        saveData();
         renderEnterprises();
     }
 }
