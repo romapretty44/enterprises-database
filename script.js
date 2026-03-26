@@ -13,7 +13,7 @@ const container = document.querySelector('.container');
 const syncStatus = document.getElementById('syncStatus');
 
 // Проверяем, авторизован ли пользователь
-if (sessionStorage.getItem('authenticated') === 'true') {
+if (localStorage.getItem('authenticated') === 'true') {
     showApp();
 } else {
     loginScreen.style.display = 'flex';
@@ -22,7 +22,7 @@ if (sessionStorage.getItem('authenticated') === 'true') {
 loginForm.addEventListener('submit', (e) => {
     e.preventDefault();
     if (passwordInput.value === PASSWORD) {
-        sessionStorage.setItem('authenticated', 'true');
+        localStorage.setItem('authenticated', 'true');
         showApp();
     } else {
         loginError.textContent = '❌ Неверный пароль';
