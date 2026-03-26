@@ -852,8 +852,8 @@ document.getElementById('addMailingEmailBtn').addEventListener('click', () => {
     const emailId = mailingEmailsCounter++;
     const emailHTML = `
         <div class="contact-form" data-mailing-email-id="${emailId}" style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center;">
-            <input type="email" placeholder="email@example.com" class="mailing-email-input" style="flex: 1; padding: 10px; border-radius: 8px; border: 2px solid rgba(99, 102, 241, 0.3); background: rgba(30, 35, 60, 0.8); color: #fff;">
-            <button type="button" onclick="removeMailingEmail(${emailId})" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; border-radius: 8px; padding: 8px 15px; cursor: pointer; font-size: 16px; transition: all 0.3s;">❌</button>
+            <input type="email" placeholder="email@example.com" class="mailing-email-input" style="flex: 1;">
+            <button type="button" class="remove-contact-btn" onclick="removeMailingEmail(${emailId})">❌</button>
         </div>
     `;
     document.getElementById('mailingEmailsList').insertAdjacentHTML('beforeend', emailHTML);
