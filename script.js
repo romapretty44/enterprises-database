@@ -41,17 +41,17 @@ function showApp() {
     initApp();
 }
 
-// DOM элементы приложения
-const modal = document.getElementById('modal');
-const addBtn = document.getElementById('addBtn');
-const closeBtn = document.querySelector('.close');
-const cancelBtn = document.getElementById('cancelBtn');
-const enterpriseForm = document.getElementById('enterpriseForm');
-const searchInput = document.getElementById('searchInput');
-const enterprisesList = document.getElementById('enterprisesList');
-const filterCheckboxes = document.querySelectorAll('.filter-checkbox');
-
 function initApp() {
+    // DOM элементы приложения (инициализируем здесь!)
+    window.modal = document.getElementById('modal');
+    window.addBtn = document.getElementById('addBtn');
+    window.closeBtn = document.querySelector('.close');
+    window.cancelBtn = document.getElementById('cancelBtn');
+    window.enterpriseForm = document.getElementById('enterpriseForm');
+    window.searchInput = document.getElementById('searchInput');
+    window.enterprisesList = document.getElementById('enterprisesList');
+    window.filterCheckboxes = document.querySelectorAll('.filter-checkbox');
+    
     // Загружаем данные
     loadData();
     renderEnterprises();
@@ -62,22 +62,22 @@ function initApp() {
     }, 10000);
     
     // События
-    addBtn.addEventListener('click', () => openModal());
-    closeBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
+    window.addBtn.addEventListener('click', () => openModal());
+    window.closeBtn.addEventListener('click', closeModal);
+    window.cancelBtn.addEventListener('click', closeModal);
     
     window.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
+        if (e.target === window.modal) closeModal();
     });
     
-    enterpriseForm.addEventListener('submit', (e) => {
+    window.enterpriseForm.addEventListener('submit', (e) => {
         e.preventDefault();
         saveEnterprise();
     });
     
-    searchInput.addEventListener('input', renderEnterprises);
+    window.searchInput.addEventListener('input', renderEnterprises);
     
-    filterCheckboxes.forEach(checkbox => {
+    window.filterCheckboxes.forEach(checkbox => {
         checkbox.addEventListener('change', renderEnterprises);
     });
 }
@@ -161,7 +161,7 @@ window.addEventListener('storage', (e) => {
 });
 
 function openModal(enterprise = null) {
-    modal.style.display = 'block';
+    window.modal.style.display = 'block';
     
     if (enterprise) {
         document.getElementById('modalTitle').textContent = 'Редактировать предприятие';
@@ -174,14 +174,14 @@ function openModal(enterprise = null) {
         });
     } else {
         document.getElementById('modalTitle').textContent = 'Добавить предприятие';
-        enterpriseForm.reset();
+        window.enterpriseForm.reset();
         document.getElementById('enterpriseId').value = '';
     }
 }
 
 function closeModal() {
-    modal.style.display = 'none';
-    enterpriseForm.reset();
+    window.modal.style.display = 'none';
+    window.enterpriseForm.reset();
 }
 
 function saveEnterprise() {
@@ -239,8 +239,12 @@ function editEnterprise(id) {
 }
 
 function renderEnterprises() {
-    const searchTerm = searchInput.value.toLowerCase();
-    const activeFilters = Array.from(filterCheckboxes)
+    if (!window.searchInput || !window.enterprisesList) {
+        return; // Элементы ещё не инициализированы
+    }
+    
+    const searchTerm = window.searchInput.value.toLowerCase();
+    const activeFilters = Array.from(window.filterCheckboxes)
         .filter(cb => cb.checked)
         .map(cb => cb.value);
     
@@ -256,7 +260,7 @@ function renderEnterprises() {
     });
     
     if (filtered.length === 0) {
-        enterprisesList.innerHTML = `
+        window.enterprisesList.innerHTML = `
             <div class="empty-state">
                 <h3>Предприятия не найдены</h3>
                 <p>Попробуйте изменить параметры поиска или добавьте новое предприятие</p>
@@ -265,7 +269,7 @@ function renderEnterprises() {
         return;
     }
     
-    enterprisesList.innerHTML = filtered.map(enterprise => `
+    window.enterprisesList.innerHTML = filtered.map(enterprise => `
         <div class="enterprise-card">
             <div class="enterprise-header">
                 <div>
