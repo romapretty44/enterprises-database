@@ -1149,7 +1149,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
     }
 
     // Формируем CSV
-    let csv = 'Название;Информация;Отрасли;Категории;Контакты\n';
+    let csv = 'Название;Информация;Отрасли;Категории;ИНН;ОГРН;ОКВЭД;Юридический адрес;Контакты\n';
     
     enterprises.forEach(ent => {
         const name = (ent.name || '').replace(/;/g, ',');
@@ -1173,11 +1173,36 @@ document.getElementById('exportBtn').addEventListener('click', () => {
         }
         const categoriesStr = categoriesList.join(', ').replace(/;/g, ',');
         
+        // Юридическая информация
+        const inn = ent.legalData?.inn || '';
+        const ogrn = ent.legalData?.ogrn || '';
+        
+        // ОКВЭД в формате: КОД - НАИМЕНОВАНИЕ
+        const okvedList = [];
+        if (ent.legalData?.okved) {
+            const mainOkved = ent.legalData.okvedType 
+                ? `${ent.legalData.okved} - ${ent.legalData.okvedType}` 
+                : ent.legalData.okved;
+            okvedList.push(mainOkved);
+        }
+        // Дополнительные ОКВЭД
+        if (ent.legalData?.okveds && ent.legalData.okveds.length > 0) {
+            ent.legalData.okveds.forEach(okv => {
+                const okvedText = okv.type 
+                    ? `${okv.kod} - ${okv.type}` 
+                    : okv.kod;
+                okvedList.push(okvedText);
+            });
+        }
+        const okvedStr = okvedList.join(', ').replace(/;/g, ',');
+        
+        const address = (ent.legalData?.address || '').replace(/;/g, ',');
+        
         const contacts = (ent.contacts || []).map(c => 
             `${c.fullName} (${c.position}) - ${c.workPhone}, ${c.email}, ${c.mobilePhone}`
         ).join(' | ').replace(/;/g, ',');
         
-        csv += `${name};${info};${industries};${categoriesStr};${contacts}\n`;
+        csv += `${name};${info};${industries};${categoriesStr};${inn};${ogrn};${okvedStr};${address};${contacts}\n`;
     });
 
     // Скачивание
