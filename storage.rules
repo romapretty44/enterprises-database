@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /enterprises/{allPaths=**} {
+      // Открытый доступ для чтения и записи
+      // TODO: Позже добавить Firebase Authentication для безопасности
+      allow read, write: if true;
+    }
+  }
+}
