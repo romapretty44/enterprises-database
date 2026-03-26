@@ -146,31 +146,27 @@ document.getElementById('loadFromEgrulBtn').addEventListener('click', async () =
             document.getElementById('directorPosition').value = data.management.post || '';
         }
         
-        // Отображение юридической информации
-        document.getElementById('legalOgrn').textContent = data.ogrn || '-';
-        document.getElementById('legalFullName').textContent = data.name.full_with_opf || '-';
+        // Заполнение редактируемых полей юридической информации
+        document.getElementById('legalOgrnInput').value = data.ogrn || '';
+        document.getElementById('legalFullNameInput').value = data.name?.full_with_opf || '';
         
         // ОКВЭД основной - получаем расшифровку через отдельный API запрос
         if (data.okved) {
-            document.getElementById('legalOkved').textContent = '⏳ Загрузка расшифровки...';
-            const okvedName = await getOkvedName(data.okved);
+            document.getElementById('legalOkvedCodeInput').value = data.okved;
+            document.getElementById('legalOkvedNameInput').value = '⏳ Загрузка...';
             
-            const okvedText = okvedName 
-                ? `${data.okved} - ${okvedName}` 
-                : data.okved;
-            document.getElementById('legalOkved').textContent = okvedText;
+            const okvedName = await getOkvedName(data.okved);
+            document.getElementById('legalOkvedNameInput').value = okvedName || '';
             
             // Сохраняем расшифровку в currentLegalData
             currentLegalData.okvedName = okvedName;
         } else {
-            document.getElementById('legalOkved').textContent = '-';
+            document.getElementById('legalOkvedCodeInput').value = '';
+            document.getElementById('legalOkvedNameInput').value = '';
         }
         
         // Дополнительные ОКВЭД - получаем расшифровку для каждого через API
         if (data.okveds && data.okveds.length > 0) {
-            document.getElementById('legalOkveds').innerHTML = '⏳ Загрузка расшифровок...';
-            document.getElementById('legalOkvedsContainer').style.display = 'grid';
-            
             // Загружаем расшифровки параллельно
             const okvedsWithNames = await Promise.all(
                 data.okveds.map(async (okv) => {
@@ -181,34 +177,18 @@ document.getElementById('loadFromEgrulBtn').addEventListener('click', async () =
             
             // Сохраняем в currentLegalData
             currentLegalData.okveds = okvedsWithNames;
-            
-            // Отображаем
-            const okvedsHtml = okvedsWithNames.map(okv => {
-                const text = okv.name 
-                    ? `<div style="margin-bottom: 5px;">• ${okv.kod} - ${okv.name}</div>` 
-                    : `<div style="margin-bottom: 5px;">• ${okv.kod}</div>`;
-                return text;
-            }).join('');
-            document.getElementById('legalOkveds').innerHTML = okvedsHtml;
-        } else {
-            document.getElementById('legalOkvedsContainer').style.display = 'none';
         }
         
-        document.getElementById('legalAddress').textContent = data.address 
-            ? data.address.unrestricted_value 
-            : '-';
-        document.getElementById('legalRegDate').textContent = data.state && data.state.registration_date
-            ? new Date(data.state.registration_date).toLocaleDateString('ru-RU')
-            : '-';
+        document.getElementById('legalAddressInput').value = data.address?.unrestricted_value || '';
+        document.getElementById('legalRegDateInput').value = data.state?.registration_date || '';
         
         // Выручка предприятия
         if (data.finance && data.finance.revenue !== null && data.finance.revenue !== undefined) {
-            const revenue = data.finance.revenue;
-            const year = data.finance.year || 'н/д';
-            const formattedRevenue = new Intl.NumberFormat('ru-RU').format(revenue);
-            document.getElementById('legalRevenue').textContent = `${formattedRevenue} ₽ (${year} г.)`;
+            document.getElementById('legalRevenueInput').value = data.finance.revenue;
+            document.getElementById('legalRevenueYearInput').value = data.finance.year || '';
         } else {
-            document.getElementById('legalRevenue').textContent = 'Нет данных';
+            document.getElementById('legalRevenueInput').value = '';
+            document.getElementById('legalRevenueYearInput').value = '';
         }
         
         // Показываем секцию с юридической информацией
@@ -575,8 +555,10 @@ function displayEnterprises() {
     filtered.forEach(ent => {
         const card = document.createElement('div');
         card.className = 'enterprise-card compact';
+        card.style.position = 'relative';
         card.innerHTML = `
-            <h3>${escapeHtml(ent.name)}</h3>
+            <input type="checkbox" class="enterprise-select-cb" data-enterprise-id="${ent.id}" style="position: absolute; top: 15px; right: 15px; width: 20px; height: 20px; cursor: pointer;">
+            <h3 style="padding-right: 40px;">${escapeHtml(ent.name)}</h3>
             <div class="industries">
                 ${(ent.industries || []).map(ind => `<span class="industry-tag">${escapeHtml(ind)}</span>`).join('')}
             </div>
@@ -588,6 +570,13 @@ function displayEnterprises() {
         `;
         container.appendChild(card);
     });
+    
+    // Добавляем обработчики на чекбоксы
+    document.querySelectorAll('.enterprise-select-cb').forEach(cb => {
+        cb.addEventListener('change', updateSelectionPanel);
+    });
+    
+    updateSelectionPanel();
 }
 
 // Просмотр предприятия (модальное окно)
@@ -811,6 +800,16 @@ document.getElementById('addBtn').addEventListener('click', () => {
     document.getElementById('mailingEmailsList').innerHTML = '';
     mailingEmailsCounter = 0;
     
+    // Сброс юридической информации
+    document.getElementById('legalOgrnInput').value = '';
+    document.getElementById('legalFullNameInput').value = '';
+    document.getElementById('legalOkvedCodeInput').value = '';
+    document.getElementById('legalOkvedNameInput').value = '';
+    document.getElementById('legalAddressInput').value = '';
+    document.getElementById('legalRegDateInput').value = '';
+    document.getElementById('legalRevenueInput').value = '';
+    document.getElementById('legalRevenueYearInput').value = '';
+    
     // Скрыть юридическую информацию
     document.getElementById('legalInfoSection').style.display = 'none';
     
@@ -970,20 +969,30 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         }
     });
 
-    // Юридическая информация (если загружена из ЕГРЮЛ)
+    // Юридическая информация (берём из редактируемых полей)
     const inn = document.getElementById('enterpriseInn').value.trim();
-    const legalData = currentLegalData ? {
-        inn: currentLegalData.inn,
-        ogrn: currentLegalData.ogrn,
-        fullName: currentLegalData.name?.full_with_opf,
-        okved: currentLegalData.okved,
-        okvedName: currentLegalData.okvedName || '', // Расшифровка получена через API suggest/okved2
-        okveds: currentLegalData.okveds || [], // Уже содержит { kod, name } из API
-        address: currentLegalData.address?.unrestricted_value,
-        registrationDate: currentLegalData.state?.registration_date,
-        revenue: currentLegalData.finance?.revenue || null, // Выручка в рублях
-        revenueYear: currentLegalData.finance?.year || null // Год данных о выручке
-    } : (inn ? { inn } : null);
+    const ogrnValue = document.getElementById('legalOgrnInput')?.value.trim();
+    const fullNameValue = document.getElementById('legalFullNameInput')?.value.trim();
+    const okvedCode = document.getElementById('legalOkvedCodeInput')?.value.trim();
+    const okvedName = document.getElementById('legalOkvedNameInput')?.value.trim();
+    const addressValue = document.getElementById('legalAddressInput')?.value.trim();
+    const regDateValue = document.getElementById('legalRegDateInput')?.value.trim();
+    const revenueValue = document.getElementById('legalRevenueInput')?.value;
+    const revenueYearValue = document.getElementById('legalRevenueYearInput')?.value;
+    
+    // Формируем legalData только если есть хотя бы одно значение
+    const legalData = (inn || ogrnValue || fullNameValue || okvedCode || addressValue || regDateValue || revenueValue) ? {
+        inn: inn || null,
+        ogrn: ogrnValue || null,
+        fullName: fullNameValue || null,
+        okved: okvedCode || null,
+        okvedName: okvedName || null,
+        okveds: currentLegalData?.okveds || [],
+        address: addressValue || null,
+        registrationDate: regDateValue || null,
+        revenue: revenueValue ? parseInt(revenueValue) : null,
+        revenueYear: revenueYearValue ? parseInt(revenueYearValue) : null
+    } : null;
 
     try {
         const data = {
@@ -1029,48 +1038,21 @@ window.editEnterprise = (id) => {
     document.getElementById('enterpriseInfo').value = ent.info || '';
     document.getElementById('enterpriseInn').value = ent.legalData?.inn || '';
     
-    // Юридическая информация
+    // Юридическая информация (заполнение редактируемых полей)
     if (ent.legalData) {
-        document.getElementById('legalOgrn').textContent = ent.legalData.ogrn || '-';
-        document.getElementById('legalFullName').textContent = ent.legalData.fullName || '-';
+        document.getElementById('legalOgrnInput').value = ent.legalData.ogrn || '';
+        document.getElementById('legalFullNameInput').value = ent.legalData.fullName || '';
+        document.getElementById('legalOkvedCodeInput').value = ent.legalData.okved || '';
+        document.getElementById('legalOkvedNameInput').value = ent.legalData.okvedName || '';
+        document.getElementById('legalAddressInput').value = ent.legalData.address || '';
+        document.getElementById('legalRegDateInput').value = ent.legalData.registrationDate || '';
+        document.getElementById('legalRevenueInput').value = ent.legalData.revenue || '';
+        document.getElementById('legalRevenueYearInput').value = ent.legalData.revenueYear || '';
         
-        // ОКВЭД основной с правильным форматом
-        if (ent.legalData.okved) {
-            const okvedText = ent.legalData.okvedName 
-                ? `${ent.legalData.okved} - ${ent.legalData.okvedName}` 
-                : ent.legalData.okved;
-            document.getElementById('legalOkved').textContent = okvedText;
-        } else {
-            document.getElementById('legalOkved').textContent = '-';
-        }
-        
-        // Дополнительные ОКВЭД
-        if (ent.legalData.okveds && ent.legalData.okveds.length > 0) {
-            const okvedsHtml = ent.legalData.okveds.map(okv => {
-                const text = okv.name 
-                    ? `<div style="margin-bottom: 5px;">• ${okv.kod} - ${okv.name}</div>` 
-                    : `<div style="margin-bottom: 5px;">• ${okv.kod}</div>`;
-                return text;
-            }).join('');
-            document.getElementById('legalOkveds').innerHTML = okvedsHtml;
-            document.getElementById('legalOkvedsContainer').style.display = 'grid';
-        } else {
-            document.getElementById('legalOkvedsContainer').style.display = 'none';
-        }
-        
-        document.getElementById('legalAddress').textContent = ent.legalData.address || '-';
-        document.getElementById('legalRegDate').textContent = ent.legalData.registrationDate
-            ? new Date(ent.legalData.registrationDate).toLocaleDateString('ru-RU')
-            : '-';
-        
-        // Выручка
-        if (ent.legalData.revenue !== null && ent.legalData.revenue !== undefined) {
-            const formattedRevenue = new Intl.NumberFormat('ru-RU').format(ent.legalData.revenue);
-            const year = ent.legalData.revenueYear || 'н/д';
-            document.getElementById('legalRevenue').textContent = `${formattedRevenue} ₽ (${year} г.)`;
-        } else {
-            document.getElementById('legalRevenue').textContent = 'Нет данных';
-        }
+        // Сохраняем okveds для последующего сохранения
+        currentLegalData = {
+            okveds: ent.legalData.okveds || []
+        };
         
         document.getElementById('legalInfoSection').style.display = 'block';
     } else {
@@ -1497,6 +1479,74 @@ document.getElementById('copyMailingBtn').addEventListener('click', () => {
     setTimeout(() => {
         btn.textContent = originalText;
     }, 2000);
+});
+
+// ========== ФУНКЦИОНАЛ ВЫБОРА ПРЕДПРИЯТИЙ ==========
+
+// Обновление панели выбора
+function updateSelectionPanel() {
+    const selectedCheckboxes = document.querySelectorAll('.enterprise-select-cb:checked');
+    const count = selectedCheckboxes.length;
+    
+    const panel = document.getElementById('selectionPanel');
+    const countSpan = document.getElementById('selectedCount');
+    
+    if (count > 0) {
+        panel.style.display = 'block';
+        countSpan.textContent = count;
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+// Выбрать все предприятия
+document.getElementById('selectAllBtn').addEventListener('click', () => {
+    document.querySelectorAll('.enterprise-select-cb').forEach(cb => {
+        cb.checked = true;
+    });
+    updateSelectionPanel();
+});
+
+// Снять выбор
+document.getElementById('deselectAllBtn').addEventListener('click', () => {
+    document.querySelectorAll('.enterprise-select-cb').forEach(cb => {
+        cb.checked = false;
+    });
+    updateSelectionPanel();
+});
+
+// Выгрузка почт выбранных предприятий
+document.getElementById('exportSelectedMailingBtn').addEventListener('click', () => {
+    const selectedIds = Array.from(document.querySelectorAll('.enterprise-select-cb:checked'))
+        .map(cb => cb.dataset.enterpriseId);
+    
+    if (selectedIds.length === 0) {
+        alert('Выберите хотя бы одно предприятие!');
+        return;
+    }
+    
+    // Фильтруем предприятия по выбранным ID
+    const selectedEnterprises = enterprises.filter(ent => selectedIds.includes(ent.id));
+    
+    // Собираем все почты в простой список
+    const allEmails = [];
+    selectedEnterprises.forEach(ent => {
+        if (ent.mailingEmails && ent.mailingEmails.length > 0) {
+            ent.mailingEmails.forEach(email => {
+                if (!allEmails.includes(email)) {
+                    allEmails.push(email);
+                }
+            });
+        }
+    });
+    
+    // Показываем результат (простой список через запятую)
+    const resultText = allEmails.join(', ');
+    const totalCount = allEmails.length;
+    
+    document.getElementById('mailingCount').textContent = `Выбрано предприятий: ${selectedIds.length} | Всего почт: ${totalCount}`;
+    document.getElementById('mailingEmailsText').value = resultText;
+    document.getElementById('mailingResultModal').style.display = 'flex';
 });
 
 // Helper функция
