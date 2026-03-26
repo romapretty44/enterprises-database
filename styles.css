@@ -439,7 +439,7 @@ form textarea:focus {
 
 form textarea {
     resize: vertical;
-    min-height: 120px;
+    min-height: 200px;
 }
 
 form input[type="text"]::placeholder,
