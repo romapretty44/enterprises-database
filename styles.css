@@ -478,7 +478,9 @@ form textarea {
 
 /* Специальный стиль для textarea описания */
 #enterpriseInfo {
-    min-height: 400px;
+    height: calc(100vh - 500px);
+    min-height: 300px;
+    max-height: 600px;
     width: 100% !important;
     background: #ffffff;
     color: #1a1f3a;
