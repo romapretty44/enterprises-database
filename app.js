@@ -1,5 +1,5 @@
 // app.js - Основная логика приложения с Firestore
-import { db, storage, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot, query, where, ref, uploadBytes, getDownloadURL, deleteObject } from './firebase-init.js';
+import { db, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot, query, where } from './firebase-init.js';
 
 const COLLECTION_NAME = 'enterprises';
 const TRASH_COLLECTION = 'trash';
@@ -10,7 +10,6 @@ let trashedEnterprises = [];
 let industries = [];
 let products = [];
 let editingId = null;
-let currentFiles = [];
 let contactsCounter = 0;
 let productsCounter = 0;
 
@@ -349,17 +348,6 @@ window.viewEnterprise = async (id) => {
         html += '</div>';
     }
 
-    // Файлы
-    if (ent.files && ent.files.length > 0) {
-        html += '<div class="view-section"><h3>📎 Файлы</h3>';
-        ent.files.forEach(file => {
-            html += `<div class="file-item">
-                <a href="${file.url}" target="_blank">📄 ${escapeHtml(file.name)}</a>
-            </div>`;
-        });
-        html += '</div>';
-    }
-
     content.innerHTML = html;
     modal.style.display = 'flex';
 };
@@ -367,7 +355,6 @@ window.viewEnterprise = async (id) => {
 // Открыть модальное окно добавления
 document.getElementById('addBtn').addEventListener('click', () => {
     editingId = null;
-    currentFiles = [];
     document.getElementById('modalTitle').textContent = 'Добавить предприятие';
     document.getElementById('enterpriseName').value = '';
     document.getElementById('enterpriseInfo').value = '';
@@ -398,10 +385,6 @@ document.getElementById('addBtn').addEventListener('click', () => {
     // Сброс контактов
     document.getElementById('contactsList').innerHTML = '';
     contactsCounter = 0;
-    
-    // Сброс файлов
-    document.getElementById('fileInput').value = '';
-    document.getElementById('filesList').innerHTML = '';
     
     document.getElementById('modal').style.display = 'flex';
 });
@@ -506,21 +489,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         }
     });
 
-    // Загрузка файлов
-    const fileInput = document.getElementById('fileInput');
-    const files = [];
-    
     try {
-        if (fileInput.files.length > 0) {
-            for (let i = 0; i < fileInput.files.length; i++) {
-                const file = fileInput.files[i];
-                const storageRef = ref(storage, `enterprises/${Date.now()}_${file.name}`);
-                await uploadBytes(storageRef, file);
-                const url = await getDownloadURL(storageRef);
-                files.push({ name: file.name, url, path: storageRef.fullPath });
-            }
-        }
-
         const data = {
             name,
             info,
@@ -532,7 +501,6 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
             regionalSupportDesc,
             federalSupportDesc,
             contacts,
-            files: editingId ? [...currentFiles, ...files] : files,
             updatedAt: new Date().toISOString()
         };
 
@@ -557,7 +525,6 @@ window.editEnterprise = (id) => {
     if (!ent) return;
 
     editingId = id;
-    currentFiles = ent.files || [];
     
     document.getElementById('modalTitle').textContent = 'Редактировать предприятие';
     document.getElementById('enterpriseName').value = ent.name;
@@ -646,38 +613,7 @@ window.editEnterprise = (id) => {
         });
     }
     
-    // Файлы
-    const filesList = document.getElementById('filesList');
-    filesList.innerHTML = '';
-    if (currentFiles.length > 0) {
-        currentFiles.forEach((file, index) => {
-            const fileItem = document.createElement('div');
-            fileItem.className = 'file-item';
-            fileItem.innerHTML = `
-                <span>📄 ${escapeHtml(file.name)}</span>
-                <button type="button" onclick="removeFile(${index})">❌</button>
-            `;
-            filesList.appendChild(fileItem);
-        });
-    }
-    
     document.getElementById('modal').style.display = 'flex';
-};
-
-window.removeFile = (index) => {
-    currentFiles.splice(index, 1);
-    // Перерисовываем список файлов
-    const filesList = document.getElementById('filesList');
-    filesList.innerHTML = '';
-    currentFiles.forEach((file, idx) => {
-        const fileItem = document.createElement('div');
-        fileItem.className = 'file-item';
-        fileItem.innerHTML = `
-            <span>📄 ${escapeHtml(file.name)}</span>
-            <button type="button" onclick="removeFile(${idx})">❌</button>
-        `;
-        filesList.appendChild(fileItem);
-    });
 };
 
 // Удалить предприятие (в корзину)

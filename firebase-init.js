@@ -1,7 +1,6 @@
 // firebase-init.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -16,6 +15,5 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
-export { db, storage, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot, query, where, ref, uploadBytes, getDownloadURL, deleteObject };
+export { db, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot, query, where };
