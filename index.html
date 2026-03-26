@@ -60,26 +60,32 @@
                 <span id="closeModal" class="close">&times;</span>
                 <h2 id="modalTitle">Добавить предприятие</h2>
                 
-                <label>Название предприятия *</label>
-                <input type="text" id="enterpriseName" required>
+                <div class="form-section">
+                    <label>📝 Название предприятия *</label>
+                    <input type="text" id="enterpriseName" required placeholder="Введите название...">
+                </div>
                 
-                <label>Информация о предприятии</label>
-                <textarea id="enterpriseInfo" rows="4"></textarea>
+                <div class="form-section">
+                    <label>ℹ️ Информация о предприятии</label>
+                    <textarea id="enterpriseInfo" rows="4" placeholder="Добавьте описание..."></textarea>
+                </div>
                 
-                <label>Отрасли (можно выбрать несколько) *</label>
-                <div id="industryCheckboxes" class="industry-checkboxes">
-                    <label><input type="checkbox" value="Промышленность"> Промышленность</label>
-                    <label><input type="checkbox" value="Судоремонт"> Судоремонт</label>
-                    <label><input type="checkbox" value="Добыча"> Добыча</label>
-                    <label><input type="checkbox" value="Обработка"> Обработка</label>
-                    <label><input type="checkbox" value="Лёгкая промышленность"> Лёгкая промышленность</label>
-                    <label><input type="checkbox" value="Рыбная отрасль"> Рыбная отрасль</label>
-                    <label><input type="checkbox" value="Металлургия"> Металлургия</label>
-                    <label><input type="checkbox" value="Лесная промышленность"> Лесная промышленность</label>
-                    <label><input type="checkbox" value="ОПК"> ОПК</label>
-                    <label><input type="checkbox" value="Машиностроение"> Машиностроение</label>
-                    <label><input type="checkbox" value="АПК"> АПК</label>
-                    <label><input type="checkbox" value="Проект"> Проект</label>
+                <div class="form-section">
+                    <label>🏭 Отрасли (можно выбрать несколько) *</label>
+                    <div id="industryCheckboxes" class="industry-checkboxes">
+                        <label><input type="checkbox" value="Промышленность"> Промышленность</label>
+                        <label><input type="checkbox" value="Судоремонт"> Судоремонт</label>
+                        <label><input type="checkbox" value="Добыча"> Добыча</label>
+                        <label><input type="checkbox" value="Обработка"> Обработка</label>
+                        <label><input type="checkbox" value="Лёгкая промышленность"> Лёгкая промышленность</label>
+                        <label><input type="checkbox" value="Рыбная отрасль"> Рыбная отрасль</label>
+                        <label><input type="checkbox" value="Металлургия"> Металлургия</label>
+                        <label><input type="checkbox" value="Лесная промышленность"> Лесная промышленность</label>
+                        <label><input type="checkbox" value="ОПК"> ОПК</label>
+                        <label><input type="checkbox" value="Машиностроение"> Машиностроение</label>
+                        <label><input type="checkbox" value="АПК"> АПК</label>
+                        <label><input type="checkbox" value="Проект"> Проект</label>
+                    </div>
                 </div>
                 
                 <button id="saveBtn" class="save-btn">💾 Сохранить</button>
