@@ -1454,21 +1454,25 @@ document.getElementById('exportMailingBtn').addEventListener('click', () => {
         });
     }
     
-    // Собираем все почты
-    const allEmails = [];
+    // Формируем нумерованный список с названиями компаний
+    const mailingList = [];
+    let totalEmailsCount = 0;
+    let index = 1;
+    
     filtered.forEach(ent => {
         if (ent.mailingEmails && ent.mailingEmails.length > 0) {
-            ent.mailingEmails.forEach(email => {
-                if (!allEmails.includes(email)) {
-                    allEmails.push(email);
-                }
-            });
+            const companyName = ent.name;
+            const emails = ent.mailingEmails.join(', ');
+            mailingList.push(`${index}. ${companyName} - ${emails}`);
+            totalEmailsCount += ent.mailingEmails.length;
+            index++;
         }
     });
     
     // Показываем результат
-    document.getElementById('mailingCount').textContent = `Всего почт: ${allEmails.length}`;
-    document.getElementById('mailingEmailsText').value = allEmails.join(', ');
+    const resultText = mailingList.join('\n');
+    document.getElementById('mailingCount').textContent = `Всего предприятий: ${mailingList.length} | Всего почт: ${totalEmailsCount}`;
+    document.getElementById('mailingEmailsText').value = resultText;
     
     document.getElementById('mailingModal').style.display = 'none';
     document.getElementById('mailingResultModal').style.display = 'flex';
