@@ -1412,11 +1412,7 @@ function openMailingFilterModal() {
     document.getElementById('mailingModal').style.display = 'flex';
 }
 
-// Открытие модального окна "📋 Список рассылки" (нумерованный список)
-document.getElementById('mailingListBtn').addEventListener('click', () => {
-    currentMailingMode = 'numbered';
-    openMailingFilterModal();
-});
+// Обработчик удалён - кнопка "Список рассылки" теперь только в модальном окне фильтрации
 
 // Закрытие модального окна выгрузки
 document.getElementById('closeMailingModal').addEventListener('click', () => {
