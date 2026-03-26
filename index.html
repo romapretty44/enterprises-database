@@ -95,9 +95,13 @@
                             <span class="legal-label">Полное название:</span>
                             <span id="legalFullName">-</span>
                         </div>
-                        <div class="legal-info-item">
-                            <span class="legal-label">ОКВЭД:</span>
+                        <div class="legal-info-item" style="grid-column: 1 / -1;">
+                            <span class="legal-label">ОКВЭД (основной):</span>
                             <span id="legalOkved">-</span>
+                        </div>
+                        <div class="legal-info-item" id="legalOkvedsContainer" style="grid-column: 1 / -1; display: none;">
+                            <span class="legal-label">ОКВЭД (дополнительные):</span>
+                            <div id="legalOkveds" style="color: #d1d5db;"></div>
                         </div>
                         <div class="legal-info-item">
                             <span class="legal-label">Юридический адрес:</span>

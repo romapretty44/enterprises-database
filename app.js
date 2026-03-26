@@ -109,9 +109,31 @@ document.getElementById('loadFromEgrulBtn').addEventListener('click', async () =
         // Отображение юридической информации
         document.getElementById('legalOgrn').textContent = data.ogrn || '-';
         document.getElementById('legalFullName').textContent = data.name.full_with_opf || '-';
-        document.getElementById('legalOkved').textContent = data.okved 
-            ? `${data.okved} (${data.okved_type || ''})` 
-            : '-';
+        
+        // ОКВЭД основной с правильным форматом: КОД - НАИМЕНОВАНИЕ
+        if (data.okved) {
+            const okvedText = data.okved_type 
+                ? `${data.okved} - ${data.okved_type}` 
+                : data.okved;
+            document.getElementById('legalOkved').textContent = okvedText;
+        } else {
+            document.getElementById('legalOkved').textContent = '-';
+        }
+        
+        // Дополнительные ОКВЭД
+        if (data.okveds && data.okveds.length > 0) {
+            const okvedsHtml = data.okveds.map(okv => {
+                const text = okv.type 
+                    ? `<div style="margin-bottom: 5px;">• ${okv.kod} - ${okv.type}</div>` 
+                    : `<div style="margin-bottom: 5px;">• ${okv.kod}</div>`;
+                return text;
+            }).join('');
+            document.getElementById('legalOkveds').innerHTML = okvedsHtml;
+            document.getElementById('legalOkvedsContainer').style.display = 'grid';
+        } else {
+            document.getElementById('legalOkvedsContainer').style.display = 'none';
+        }
+        
         document.getElementById('legalAddress').textContent = data.address 
             ? data.address.unrestricted_value 
             : '-';
@@ -608,10 +630,27 @@ window.viewEnterprise = async (id) => {
         }
         
         if (ent.legalData.okved) {
+            const okvedText = ent.legalData.okvedType 
+                ? `${escapeHtml(ent.legalData.okved)} - ${escapeHtml(ent.legalData.okvedType)}` 
+                : escapeHtml(ent.legalData.okved);
             html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
-                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">ОКВЭД:</span>
-                <span style="color: #d1d5db;">${escapeHtml(ent.legalData.okved)}${ent.legalData.okvedType ? ` (${escapeHtml(ent.legalData.okvedType)})` : ''}</span>
+                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">ОКВЭД (основной):</span>
+                <span style="color: #d1d5db;">${okvedText}</span>
             </div>`;
+        }
+        
+        // Дополнительные ОКВЭД
+        if (ent.legalData.okveds && ent.legalData.okveds.length > 0) {
+            html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
+                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">ОКВЭД (дополнительные):</span>
+                <div style="color: #d1d5db;">`;
+            ent.legalData.okveds.forEach(okv => {
+                const okvedText = okv.type 
+                    ? `${escapeHtml(okv.kod)} - ${escapeHtml(okv.type)}` 
+                    : escapeHtml(okv.kod);
+                html += `<div style="margin-bottom: 5px;">• ${okvedText}</div>`;
+            });
+            html += `</div></div>`;
         }
         
         if (ent.legalData.address) {
@@ -792,6 +831,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         fullName: currentLegalData.name?.full_with_opf,
         okved: currentLegalData.okved,
         okvedType: currentLegalData.okved_type,
+        okveds: currentLegalData.okveds || [],
         address: currentLegalData.address?.unrestricted_value,
         registrationDate: currentLegalData.state?.registration_date
     } : (inn ? { inn } : null);
@@ -843,9 +883,31 @@ window.editEnterprise = (id) => {
     if (ent.legalData) {
         document.getElementById('legalOgrn').textContent = ent.legalData.ogrn || '-';
         document.getElementById('legalFullName').textContent = ent.legalData.fullName || '-';
-        document.getElementById('legalOkved').textContent = ent.legalData.okved 
-            ? `${ent.legalData.okved} (${ent.legalData.okvedType || ''})` 
-            : '-';
+        
+        // ОКВЭД основной с правильным форматом
+        if (ent.legalData.okved) {
+            const okvedText = ent.legalData.okvedType 
+                ? `${ent.legalData.okved} - ${ent.legalData.okvedType}` 
+                : ent.legalData.okved;
+            document.getElementById('legalOkved').textContent = okvedText;
+        } else {
+            document.getElementById('legalOkved').textContent = '-';
+        }
+        
+        // Дополнительные ОКВЭД
+        if (ent.legalData.okveds && ent.legalData.okveds.length > 0) {
+            const okvedsHtml = ent.legalData.okveds.map(okv => {
+                const text = okv.type 
+                    ? `<div style="margin-bottom: 5px;">• ${okv.kod} - ${okv.type}</div>` 
+                    : `<div style="margin-bottom: 5px;">• ${okv.kod}</div>`;
+                return text;
+            }).join('');
+            document.getElementById('legalOkveds').innerHTML = okvedsHtml;
+            document.getElementById('legalOkvedsContainer').style.display = 'grid';
+        } else {
+            document.getElementById('legalOkvedsContainer').style.display = 'none';
+        }
+        
         document.getElementById('legalAddress').textContent = ent.legalData.address || '-';
         document.getElementById('legalRegDate').textContent = ent.legalData.registrationDate
             ? new Date(ent.legalData.registrationDate).toLocaleDateString('ru-RU')
