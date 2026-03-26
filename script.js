@@ -41,7 +41,7 @@ function showApp() {
 
 // Хранилище данных
 let enterprises = [];
-let dbKey = null;
+const dbKey = 'enterprises_cloud_db_v1';
 
 // DOM элементы
 const modal = document.getElementById('modal');
@@ -98,11 +98,7 @@ async function loadFromCloud(silent = false) {
     }
     
     try {
-        // Используем localStorage как облачное хранилище с unique key
-        const storageKey = 'enterprises_cloud_db_v1';
-        dbKey = storageKey;
-        
-        const stored = localStorage.getItem(storageKey);
+        const stored = localStorage.getItem(dbKey);
         
         if (stored) {
             try {
