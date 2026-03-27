@@ -1201,13 +1201,15 @@ window.deleteEnterprise = async (id) => {
         }
 
         console.log('📋 Копирование в корзину...');
-        console.log('📋 Данные для копирования:', { ...ent, deletedAt: new Date().toISOString(), originalId: id });
         
-        // Копируем в корзину
+        // Копируем в корзину (УБИРАЕМ поле id, чтобы избежать конфликта с doc.id)
+        const { id: removedId, ...entWithoutId } = ent;
+        console.log('📋 Данные для копирования:', { ...entWithoutId, deletedAt: new Date().toISOString(), originalId: id });
+        
         const trashDoc = await addDoc(collection(db, TRASH_COLLECTION), {
-            ...ent,
+            ...entWithoutId, // Данные без поля id
             deletedAt: new Date().toISOString(),
-            originalId: id
+            originalId: id // Сохраняем оригинальный ID отдельно
         });
         
         console.log('✅ Документ скопирован в корзину с ID:', trashDoc.id);
