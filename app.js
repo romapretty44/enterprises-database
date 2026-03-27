@@ -1311,6 +1311,7 @@ window.deletePermanently = async (trashId) => {
     console.log('🎯 Входной параметр trashId:', trashId);
     console.log('🔍 Тип trashId:', typeof trashId);
     console.log('📋 Коллекция:', TRASH_COLLECTION);
+    console.log('🔍 Полный путь документа:', `${TRASH_COLLECTION}/${trashId}`);
     
     if (!confirm('ВНИМАНИЕ! Предприятие будет удалено навсегда. Продолжить?')) {
         console.log('❌ Пользователь отменил удаление');
@@ -1322,17 +1323,40 @@ window.deletePermanently = async (trashId) => {
         console.log('  - db:', typeof db, db);
         console.log('  - deleteDoc:', typeof deleteDoc);
         console.log('  - doc:', typeof doc);
+        console.log('  - getDoc:', typeof getDoc);
         
         console.log('🔹 Создание ссылки на документ...');
         const docRef = doc(db, TRASH_COLLECTION, trashId);
         console.log('  - docRef.path:', docRef.path);
         console.log('  - docRef.id:', docRef.id);
         
+        // НОВАЯ ПРОВЕРКА: Проверяем существование документа ПЕРЕД удалением
+        console.log('🔍 Проверка существования документа ПЕРЕД удалением...');
+        const docSnapBefore = await getDoc(docRef);
+        if (!docSnapBefore.exists()) {
+            console.error('❌ КРИТИЧНО: Документ НЕ существует в Firestore!');
+            alert('Ошибка: документ не найден в базе данных');
+            return;
+        }
+        console.log('✅ Документ существует, данные:', docSnapBefore.data());
+        
         console.log('🔹 Вызов deleteDoc...');
         const startTime = Date.now();
         await deleteDoc(docRef);
         const elapsed = Date.now() - startTime;
         console.log(`✅ deleteDoc выполнен успешно за ${elapsed}ms`);
+        
+        // НОВАЯ ПРОВЕРКА: Проверяем что документ действительно удалён ПОСЛЕ deleteDoc
+        console.log('🔍 Проверка существования документа ПОСЛЕ удаления...');
+        const docSnapAfter = await getDoc(docRef);
+        if (docSnapAfter.exists()) {
+            console.error('❌ КРИТИЧНО: Документ НЕ был удален из Firestore!');
+            console.error('   Данные документа всё ещё существуют:', docSnapAfter.data());
+            alert('ОШИБКА: deleteDoc сработал, но документ остался в базе! Проверьте права доступа Firestore.');
+            return;
+        } else {
+            console.log('✅ Документ действительно удалён из Firestore');
+        }
         
         console.log('🔹 Обновление локального массива...');
         const beforeLength = trashedEnterprises.length;
