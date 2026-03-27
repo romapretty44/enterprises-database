@@ -986,55 +986,50 @@ footer {
     word-break: break-word;
 }
 
-/* Сворачивание информации в карточках */
-.info-block {
-    margin: 15px 0;
-}
-
-.info-text {
-    margin: 10px 0;
+/* Сворачивание информации в модальном окне просмотра */
+.view-info-text {
+    color: #d1d5db;
     line-height: 1.6;
+    white-space: pre-wrap;
     transition: max-height 0.3s ease;
-    color: #9ca3af;
 }
 
-.info-text.collapsed {
-    max-height: 4.8em; /* ~3 строки текста */
+.view-info-text.collapsed {
+    max-height: 5em; /* ~3-4 строки */
     overflow: hidden;
     position: relative;
 }
 
-.info-text.collapsed::after {
+.view-info-text.collapsed::after {
     content: '';
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 1.6em;
-    background: linear-gradient(transparent, #1a1a1a);
+    height: 2em;
+    background: linear-gradient(transparent, #2a2a2a);
 }
 
-.info-text.expanded {
+.view-info-text.expanded {
     max-height: none;
 }
 
-.info-text.expanded::after {
+.view-info-text.expanded::after {
     display: none;
 }
 
-.expand-btn {
+.view-expand-btn {
     background: transparent;
     color: #3498db;
     border: 1px solid #3498db;
-    padding: 6px 12px;
+    padding: 8px 16px;
     font-size: 0.9em;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    margin-top: 5px;
-    transition: all 0.3s;
+    margin-top: 10px;
 }
 
-.expand-btn:hover {
+.view-expand-btn:hover {
     background: #3498db;
     color: white;
 }

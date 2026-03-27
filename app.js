@@ -10,9 +10,9 @@ const DADATA_API_KEY = '2566ea2523ff5ec4a2f0fc93ff3ee1a00235b01a';
 const DADATA_API_URL = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party';
 const DADATA_OKVED_URL = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/okved2';
 
-// Функция сворачивания/разворачивания информации
-window.toggleInfo = function(id) {
-    const infoText = document.getElementById(`info-${id}`);
+// Функция сворачивания/разворачивания информации в модальном окне просмотра
+window.toggleViewInfo = function(id) {
+    const infoText = document.getElementById(`view-info-${id}`);
     const btn = event.target;
     
     if (infoText.classList.contains('collapsed')) {
@@ -628,12 +628,6 @@ function displayEnterprises() {
             <div class="industries">
                 ${(ent.industries || []).map(ind => `<span class="industry-tag">${escapeHtml(ind)}</span>`).join('')}
             </div>
-            ${ent.info ? `
-            <div class="info-block">
-                <p class="info-text collapsed" id="info-${ent.id}">${escapeHtml(ent.info)}</p>
-                ${ent.info.length > 150 ? `<button class="expand-btn" onclick="toggleInfo('${ent.id}')">📄 Показать полностью</button>` : ''}
-            </div>
-            ` : ''}
             <div class="card-actions">
                 <button onclick="viewEnterprise('${ent.id}')">👁️ Просмотр</button>
                 <button onclick="editEnterprise('${ent.id}')">✏️ Редактировать</button>
@@ -659,12 +653,28 @@ window.viewEnterprise = async (id) => {
     const modal = document.getElementById('viewModal');
     const content = document.getElementById('viewModalContent');
     
-    let html = `
-        <h2>${escapeHtml(ent.name)}</h2>
-        <div class="view-section">
-            <h3>💼 Информация</h3>
-            <p style="white-space: pre-wrap;">${escapeHtml(ent.info || 'Нет информации')}</p>
-        </div>
+    let html = `<h2>${escapeHtml(ent.name)}</h2>`;
+    
+    // Информация с возможностью сворачивания
+    let infoHtml = '';
+    if (ent.info) {
+        const isLong = ent.info.length > 200;
+        infoHtml = `
+            <div style="margin: 15px 0;">
+                <h4 style="color: #3498db; margin-bottom: 10px;">📝 Информация:</h4>
+                <div class="view-info-block">
+                    <p class="view-info-text ${isLong ? 'collapsed' : ''}" id="view-info-${ent.id}">
+                        ${escapeHtml(ent.info)}
+                    </p>
+                    ${isLong ? `<button class="view-expand-btn" onclick="toggleViewInfo('${ent.id}')">📄 Показать полностью</button>` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    html += infoHtml;
+    
+    html += `
         <div class="view-section">
             <h3>🏭 Отрасли</h3>
             <div class="industries">
