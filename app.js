@@ -1184,25 +1184,46 @@ window.editEnterprise = (id) => {
 
 // Удалить предприятие (в корзину)
 window.deleteEnterprise = async (id) => {
-    if (!confirm('Переместить это предприятие в корзину?')) return;
+    console.log('🗑️ deleteEnterprise вызвана с ID:', id);
+    
+    if (!confirm('Переместить это предприятие в корзину?')) {
+        console.log('❌ Пользователь отменил удаление');
+        return;
+    }
 
     try {
         const ent = enterprises.find(e => e.id === id);
-        if (!ent) return;
+        console.log('📦 Найдено предприятие:', ent ? ent.name : 'НЕ НАЙДЕНО');
+        
+        if (!ent) {
+            console.error('❌ Предприятие не найдено в локальном массиве');
+            return;
+        }
 
+        console.log('📋 Копирование в корзину...');
+        console.log('📋 Данные для копирования:', { ...ent, deletedAt: new Date().toISOString(), originalId: id });
+        
         // Копируем в корзину
-        await addDoc(collection(db, TRASH_COLLECTION), {
+        const trashDoc = await addDoc(collection(db, TRASH_COLLECTION), {
             ...ent,
             deletedAt: new Date().toISOString(),
             originalId: id
         });
+        
+        console.log('✅ Документ скопирован в корзину с ID:', trashDoc.id);
 
         // Удаляем из основной коллекции
+        console.log('🗑️ Удаление из основной коллекции...');
         await deleteDoc(doc(db, COLLECTION_NAME, id));
+        console.log('✅ Удалено из основной коллекции');
+        
         alert('Предприятие перемещено в корзину');
     } catch (error) {
-        console.error("Ошибка удаления:", error);
-        alert("Ошибка удаления данных. Проверьте консоль.");
+        console.error('❌ ОШИБКА при удалении:', error);
+        console.error('❌ Тип ошибки:', error.name);
+        console.error('❌ Сообщение:', error.message);
+        console.error('❌ Stack:', error.stack);
+        alert(`Ошибка удаления данных: ${error.message}`);
     }
 };
 
