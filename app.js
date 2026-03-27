@@ -66,7 +66,6 @@ function checkAuth() {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainContent').style.display = 'block';
         loadIndustries();
-        loadProducts();
         loadCategories();
         loadEnterprises();
         setupRealtimeListener();
@@ -181,16 +180,19 @@ document.getElementById('loadFromEgrulBtn').addEventListener('click', async () =
         }
         
         document.getElementById('legalAddressInput').value = data.address?.unrestricted_value || '';
-        document.getElementById('legalRegDateInput').value = data.state?.registration_date || '';
         
-        // Выручка предприятия
-        if (data.finance && data.finance.revenue !== null && data.finance.revenue !== undefined) {
-            document.getElementById('legalRevenueInput').value = data.finance.revenue;
-            document.getElementById('legalRevenueYearInput').value = data.finance.year || '';
-        } else {
-            document.getElementById('legalRevenueInput').value = '';
-            document.getElementById('legalRevenueYearInput').value = '';
+        // Используем ogrn_date - дата первичной регистрации компании (дата выдачи ОГРН)
+        // Это правильная дата регистрации, а не state.registration_date
+        let registrationDate = '';
+        if (data.ogrn_date) {
+            // Если это timestamp (число), конвертируем в YYYY-MM-DD
+            if (typeof data.ogrn_date === 'number') {
+                registrationDate = new Date(data.ogrn_date).toISOString().split('T')[0];
+            } else {
+                registrationDate = data.ogrn_date;
+            }
         }
+        document.getElementById('legalRegDateInput').value = registrationDate;
         
         // Показываем секцию с юридической информацией
         document.getElementById('legalInfoSection').style.display = 'block';
@@ -292,14 +294,24 @@ document.getElementById('saveIndustryBtn').addEventListener('click', async () =>
     }
 });
 
-// Загрузка списка видов продукции
+// Загрузка списка видов продукции из реальных данных предприятий
 async function loadProducts() {
     try {
-        const querySnapshot = await getDocs(collection(db, PRODUCTS_COLLECTION));
-        products = [];
-        querySnapshot.forEach((doc) => {
-            products.push(doc.data().name);
+        // Собираем уникальные виды продукции из всех предприятий
+        const uniqueProducts = new Set();
+        
+        enterprises.forEach(ent => {
+            if (ent.productionTypes && Array.isArray(ent.productionTypes)) {
+                ent.productionTypes.forEach(prod => {
+                    if (prod && prod.trim()) {
+                        uniqueProducts.add(prod.trim());
+                    }
+                });
+            }
         });
+        
+        // Преобразуем в отсортированный массив
+        products = Array.from(uniqueProducts).sort();
         
         renderProductsFilter();
     } catch (error) {
@@ -501,6 +513,8 @@ async function loadEnterprises() {
         querySnapshot.forEach((doc) => {
             enterprises.push({ id: doc.id, ...doc.data() });
         });
+        // Загружаем виды продукции ПОСЛЕ загрузки предприятий
+        loadProducts();
         displayEnterprises();
     } catch (error) {
         console.error("Ошибка загрузки данных:", error);
@@ -515,6 +529,8 @@ function setupRealtimeListener() {
         snapshot.forEach((doc) => {
             enterprises.push({ id: doc.id, ...doc.data() });
         });
+        // Обновляем виды продукции из реальных данных
+        loadProducts();
         displayEnterprises();
     });
 }
@@ -737,21 +753,6 @@ window.viewEnterprise = async (id) => {
             </div>`;
         }
         
-        // Выручка предприятия
-        if (ent.legalData.revenue !== null && ent.legalData.revenue !== undefined) {
-            const formattedRevenue = new Intl.NumberFormat('ru-RU').format(ent.legalData.revenue);
-            const year = ent.legalData.revenueYear || 'н/д';
-            html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
-                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">Выручка предприятия:</span>
-                <span style="color: #d1d5db;">${formattedRevenue} ₽ (${year} г.)</span>
-            </div>`;
-        } else {
-            html += `<div style="display: grid; grid-template-columns: 180px 1fr; gap: 10px;">
-                <span style="color: #9ca3af; font-weight: 600; font-size: 0.9em;">Выручка предприятия:</span>
-                <span style="color: #d1d5db;">Нет данных</span>
-            </div>`;
-        }
-        
         html += '</div></div>';
     }
 
@@ -886,6 +887,31 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         return;
     }
 
+    // Проверка на дубликат ИНН
+    const inn = document.getElementById('enterpriseInn').value.trim();
+    if (inn) {
+        try {
+            const innQuery = query(collection(db, COLLECTION_NAME), where("legalData.inn", "==", inn));
+            const innSnapshot = await getDocs(innQuery);
+            
+            if (!innSnapshot.empty) {
+                const duplicateDoc = innSnapshot.docs[0];
+                const duplicateId = duplicateDoc.id;
+                const duplicateData = duplicateDoc.data();
+                
+                // Проверяем, что это не текущее редактируемое предприятие
+                if (editingId !== duplicateId) {
+                    alert(`⚠️ Предприятие с ИНН ${inn} уже добавлено в базу: ${duplicateData.name}`);
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('Ошибка проверки дубликата ИНН:', error);
+            alert('Ошибка проверки ИНН. Проверьте консоль.');
+            return;
+        }
+    }
+
     // Категории - новая структура (ID категорий)
     const enterpriseCategories = {};
     const categoriesDescriptions = {};
@@ -923,11 +949,6 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         const value = input.value.trim();
         if (value && !productionTypes.includes(value)) {
             productionTypes.push(value);
-            // Добавляем в коллекцию products если новый
-            if (!products.includes(value)) {
-                products.push(value);
-                addDoc(collection(db, PRODUCTS_COLLECTION), { name: value }).catch(err => console.error(err));
-            }
         }
     });
 
@@ -1047,8 +1068,6 @@ window.editEnterprise = (id) => {
         document.getElementById('legalOkvedNameInput').value = ent.legalData.okvedName || '';
         document.getElementById('legalAddressInput').value = ent.legalData.address || '';
         document.getElementById('legalRegDateInput').value = ent.legalData.registrationDate || '';
-        document.getElementById('legalRevenueInput').value = ent.legalData.revenue || '';
-        document.getElementById('legalRevenueYearInput').value = ent.legalData.revenueYear || '';
         
         // Сохраняем okveds для последующего сохранения
         currentLegalData = {
@@ -1270,18 +1289,29 @@ window.restoreEnterprise = async (trashId, originalId) => {
 };
 
 window.deletePermanently = async (trashId) => {
-    if (!confirm('ВНИМАНИЕ! Предприятие будет удалено навсегда. Продолжить?')) return;
+    console.log('🗑️ deletePermanently вызвана с ID:', trashId);
+    
+    if (!confirm('ВНИМАНИЕ! Предприятие будет удалено навсегда. Продолжить?')) {
+        console.log('❌ Пользователь отменил удаление');
+        return;
+    }
 
     try {
+        console.log('🔥 Начинаем удаление документа из коллекции:', TRASH_COLLECTION, 'ID:', trashId);
+        
+        // Удаляем документ из Firestore
         await deleteDoc(doc(db, TRASH_COLLECTION, trashId));
+        console.log('✅ Документ успешно удалён из Firestore');
         
         // Удаляем из локального массива
         trashedEnterprises = trashedEnterprises.filter(e => e.id !== trashId);
+        console.log('✅ Удалено из локального массива. Осталось элементов:', trashedEnterprises.length);
         
         // Обновляем отображение корзины
         const container = document.getElementById('trashContainer');
         if (trashedEnterprises.length === 0) {
             container.innerHTML = '<p style="text-align: center;">Корзина пуста</p>';
+            console.log('✅ Корзина теперь пуста');
         } else {
             container.innerHTML = trashedEnterprises.map(ent => `
                 <div class="enterprise-card">
@@ -1293,12 +1323,15 @@ window.deletePermanently = async (trashId) => {
                     </div>
                 </div>
             `).join('');
+            console.log('✅ UI обновлён. Осталось предприятий:', trashedEnterprises.length);
         }
         
         alert('Предприятие удалено навсегда');
+        console.log('✅ Окончательное удаление завершено успешно');
     } catch (error) {
-        console.error("Ошибка окончательного удаления:", error);
-        alert("Ошибка удаления");
+        console.error("❌ Ошибка окончательного удаления:", error);
+        console.error("Детали ошибки:", error.message, error.code);
+        alert("Ошибка удаления: " + error.message);
     }
 };
 
