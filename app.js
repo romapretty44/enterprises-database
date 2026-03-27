@@ -217,6 +217,9 @@ async function loadIndustries() {
             industries.push(doc.data().name);
         });
         
+        // Убираем дубли через Set
+        industries = [...new Set(industries)];
+        
         // Если список пустой, добавляем базовые отрасли
         if (industries.length === 0) {
             const defaultIndustries = [
@@ -241,6 +244,9 @@ async function loadIndustries() {
 // Отрисовка фильтров отраслей
 function renderIndustryFilters() {
     const container = document.getElementById('industryFilter');
+    // ОЧИЩАЕМ контейнер перед отрисовкой
+    container.innerHTML = '';
+    
     container.innerHTML = industries.map(ind => `
         <label><input type="checkbox" class="industry-filter-cb" value="${ind}"> ${ind}</label>
     `).join('');
@@ -297,6 +303,9 @@ document.getElementById('saveIndustryBtn').addEventListener('click', async () =>
 // Загрузка списка видов продукции из реальных данных предприятий
 async function loadProducts() {
     try {
+        // ОЧИЩАЕМ массив перед загрузкой
+        products = [];
+        
         // Собираем уникальные виды продукции из всех предприятий
         const uniqueProducts = new Set();
         
@@ -323,6 +332,9 @@ async function loadProducts() {
 function renderProductsFilter() {
     const container = document.getElementById('productsFilter');
     if (!container) return;
+    
+    // ОЧИЩАЕМ контейнер перед отрисовкой
+    container.innerHTML = '';
     
     container.innerHTML = products.map(prod => `
         <label><input type="checkbox" class="products-filter-cb" value="${prod}"> ${prod}</label>
@@ -375,6 +387,16 @@ async function loadCategories() {
             categories.push({ id: doc.id, ...doc.data() });
         });
         
+        // Убираем дубли по id (на случай если они появятся)
+        const uniqueIds = new Set();
+        categories = categories.filter(cat => {
+            if (uniqueIds.has(cat.id)) {
+                return false;
+            }
+            uniqueIds.add(cat.id);
+            return true;
+        });
+        
         // Если список пустой, добавляем базовые категории
         if (categories.length === 0) {
             const defaultCategories = [
@@ -402,6 +424,9 @@ async function loadCategories() {
 // Отрисовка фильтров категорий
 function renderCategoriesFilters() {
     const container = document.getElementById('categoriesFilter');
+    // ОЧИЩАЕМ контейнер перед отрисовкой
+    container.innerHTML = '';
+    
     container.innerHTML = categories.map(cat => `
         <label><input type="checkbox" class="category-filter-cb" value="${cat.id}"> ${escapeHtml(cat.name)}</label>
     `).join('');
