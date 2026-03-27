@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Перезагрузка сайта</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        h1 {
+            color: #3498db;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        input {
+            padding: 10px;
+            font-size: 16px;
+            width: 400px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        #log {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: #2ecc71; }
+        .error { color: #e74c3c; }
+        .info { color: #3498db; }
+        .warning { color: #f39c12; }
+        code {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .info-box {
+            background: #2c3e50;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔄 Перезагрузка сайта GitHub Pages</h1>
+    
+    <div class="info-box">
+        <p><strong>ℹ️ Что делает эта утилита:</strong></p>
+        <ul>
+            <li>Отправляет запрос в GitHub API для пересборки и деплоя сайта</li>
+            <li>Обновляет все файлы на GitHub Pages</li>
+            <li>Сбрасывает кэш на стороне GitHub</li>
+        </ul>
+        <p><strong>⏱️ Время обновления:</strong> обычно 1-3 минуты</p>
+    </div>
+
+    <div>
+        <label for="tokenInput"><strong>GitHub Personal Access Token:</strong></label><br>
+        <input type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxx">
+        <br>
+        <small style="color: #888;">Введите свой GitHub Personal Access Token</small>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <button id="reloadBtn" onclick="reloadSite()">🔄 Перезагрузить сайт</button>
+        <button onclick="checkStatus()">📊 Проверить статус</button>
+        <button onclick="location.reload()">🔁 Обновить страницу</button>
+    </div>
+    
+    <div id="log"></div>
+
+    <script>
+        let logElement;
+        
+        function addLog(msg, type = 'info') {
+            if (!logElement) {
+                logElement = document.getElementById('log');
+            }
+            const line = document.createElement('div');
+            line.className = type;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logElement.appendChild(line);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        async function reloadSite() {
+            const btn = document.getElementById('reloadBtn');
+            const token = document.getElementById('tokenInput').value.trim();
+            const log = document.getElementById('log');
+            
+            if (!token) {
+                alert('❌ Введите GitHub токен!');
+                return;
+            }
+            
+            btn.disabled = true;
+            log.innerHTML = '';
+            
+            addLog('🚀 Отправка запроса на перезагрузку сайта...', 'info');
+            
+            try {
+                const response = await fetch('https://api.github.com/repos/romapretty44/enterprises-database/pages/builds', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                addLog('✅ Запрос успешно отправлен!', 'success');
+                addLog(`📋 Статус: ${data.status}`, 'info');
+                addLog(`🔗 URL: ${data.url}`, 'info');
+                addLog('', 'info');
+                addLog('⏳ Ожидание завершения деплоя (60 секунд)...', 'warning');
+                
+                // Ждём 60 секунд
+                await new Promise(resolve => setTimeout(resolve, 60000));
+                
+                // Проверяем статус
+                addLog('🔍 Проверка статуса деплоя...', 'info');
+                await checkStatus(token);
+                
+            } catch (error) {
+                addLog(`❌ ОШИБКА: ${error.message}`, 'error');
+                console.error('Полная ошибка:', error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function checkStatus(providedToken = null) {
+            const token = providedToken || document.getElementById('tokenInput').value.trim();
+            const log = document.getElementById('log');
+            
+            if (!token) {
+                alert('❌ Введите GitHub токен!');
+                return;
+            }
+            
+            if (!logElement) {
+                log.innerHTML = '';
+            }
+            
+            addLog('🔍 Получение статуса последнего деплоя...', 'info');
+            
+            try {
+                const response = await fetch('https://api.github.com/repos/romapretty44/enterprises-database/pages/builds/latest', {
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                addLog('═══════════════════════════════════════', 'info');
+                addLog(`📊 Статус деплоя: ${data.status}`, data.status === 'built' ? 'success' : 'warning');
+                
+                if (data.status === 'built') {
+                    addLog('✅ Сайт успешно перезагружен!', 'success');
+                    addLog('🌐 Изменения применены на GitHub Pages', 'success');
+                } else if (data.status === 'building') {
+                    addLog('⏳ Сайт в процессе сборки...', 'warning');
+                } else if (data.status === 'queued') {
+                    addLog('⏳ Деплой в очереди...', 'warning');
+                } else if (data.status === 'errored') {
+                    addLog('❌ Ошибка при сборке сайта', 'error');
+                }
+                
+                if (data.commit) {
+                    addLog(`📝 Коммит: ${data.commit.substring(0, 7)}`, 'info');
+                }
+                
+                if (data.updated_at) {
+                    const date = new Date(data.updated_at);
+                    addLog(`🕒 Обновлено: ${date.toLocaleString('ru-RU')}`, 'info');
+                }
+                
+                addLog('═══════════════════════════════════════', 'info');
+                
+            } catch (error) {
+                addLog(`❌ ОШИБКА: ${error.message}`, 'error');
+                console.error('Полная ошибка:', error);
+            }
+        }
+    </script>
+</body>
+</html>
