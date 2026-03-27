@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление категориями</title>
+    <style>
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        h1 {
+            color: #3498db;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        button.danger {
+            background: #e74c3c;
+        }
+        button.danger:hover {
+            background: #c0392b;
+        }
+        #log {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: #2ecc71; }
+        .error { color: #e74c3c; }
+        .info { color: #3498db; }
+        .warning { color: #f39c12; }
+        #categoriesList {
+            margin: 20px 0;
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .category-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            margin: 8px 0;
+            background: #1a1a1a;
+            border-radius: 6px;
+            border-left: 3px solid #3498db;
+        }
+        .category-name {
+            flex: 1;
+            font-weight: 500;
+        }
+        .category-desc {
+            color: #888;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+        .info-box {
+            background: #2c3e50;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏷️ Управление дополнительными категориями</h1>
+    
+    <div class="info-box">
+        <p><strong>ℹ️ Что делает эта утилита:</strong></p>
+        <ul>
+            <li>Показывает все категории из Firestore</li>
+            <li>Позволяет удалить любую категорию</li>
+            <li>Удаление категории НЕ удаляет её из предприятий (они сохранят старые данные)</li>
+        </ul>
+    </div>
+
+    <div>
+        <button onclick="loadCategories()">🔄 Загрузить категории</button>
+        <button onclick="location.reload()">🔁 Обновить страницу</button>
+        <button onclick="location.href='index.html'">🏠 Вернуться на главную</button>
+    </div>
+    
+    <div id="categoriesList"></div>
+    <div id="log"></div>
+
+    <script type="module">
+        import { db, collection, getDocs, deleteDoc, doc } from './firebase-init.js';
+        
+        const CATEGORIES_COLLECTION = 'categories';
+        let categories = [];
+        
+        function addLog(msg, type = 'info') {
+            const log = document.getElementById('log');
+            const line = document.createElement('div');
+            line.className = type;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            log.appendChild(line);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        window.loadCategories = async function() {
+            const container = document.getElementById('categoriesList');
+            const log = document.getElementById('log');
+            
+            log.innerHTML = '';
+            container.innerHTML = '<p style="text-align: center;">⏳ Загрузка категорий...</p>';
+            
+            addLog('📦 Загрузка категорий из Firestore...', 'info');
+            
+            try {
+                const querySnapshot = await getDocs(collection(db, CATEGORIES_COLLECTION));
+                categories = [];
+                
+                querySnapshot.forEach((doc) => {
+                    categories.push({ id: doc.id, ...doc.data() });
+                });
+                
+                addLog(`✅ Загружено категорий: ${categories.length}`, 'success');
+                
+                if (categories.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #888;">Категории не найдены</p>';
+                    addLog('ℹ️ Список категорий пуст', 'info');
+                    return;
+                }
+                
+                renderCategories();
+                
+            } catch (error) {
+                addLog(`❌ ОШИБКА: ${error.message}`, 'error');
+                console.error('Полная ошибка:', error);
+                container.innerHTML = '<p style="text-align: center; color: #e74c3c;">Ошибка загрузки</p>';
+            }
+        }
+        
+        function renderCategories() {
+            const container = document.getElementById('categoriesList');
+            
+            container.innerHTML = `
+                <h3>📋 Список категорий (${categories.length}):</h3>
+                ${categories.map(cat => `
+                    <div class="category-item">
+                        <span class="category-name">
+                            ${escapeHtml(cat.name)}
+                            ${cat.hasDescription ? '<span class="category-desc">(с описанием)</span>' : ''}
+                        </span>
+                        <button class="danger" onclick="deleteCategory('${cat.id}', '${escapeHtml(cat.name).replace(/'/g, "\\'")}')">
+                            🗑️ Удалить
+                        </button>
+                    </div>
+                `).join('')}
+            `;
+        }
+        
+        window.deleteCategory = async function(categoryId, categoryName) {
+            if (!confirm(`⚠️ ВНИМАНИЕ!\n\nУдалить категорию "${categoryName}"?\n\nЭто действие нельзя отменить.\n\nПредприятия с этой категорией сохранят её в своих данных, но она исчезнет из списка при добавлении новых предприятий.`)) {
+                addLog('❌ Пользователь отменил удаление', 'info');
+                return;
+            }
+            
+            addLog(`🗑️ Удаление категории: ${categoryName} (ID: ${categoryId})`, 'info');
+            
+            try {
+                await deleteDoc(doc(db, CATEGORIES_COLLECTION, categoryId));
+                addLog(`✅ Категория "${categoryName}" успешно удалена`, 'success');
+                
+                // Удаляем из локального массива
+                categories = categories.filter(c => c.id !== categoryId);
+                
+                // Перерисовываем список
+                renderCategories();
+                
+                addLog(`📊 Осталось категорий: ${categories.length}`, 'info');
+                
+            } catch (error) {
+                addLog(`❌ ОШИБКА при удалении: ${error.message}`, 'error');
+                console.error('Полная ошибка:', error);
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Автозагрузка при открытии страницы
+        window.addEventListener('DOMContentLoaded', () => {
+            loadCategories();
+        });
+    </script>
+</body>
+</html>
