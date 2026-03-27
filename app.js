@@ -809,8 +809,6 @@ document.getElementById('addBtn').addEventListener('click', () => {
     document.getElementById('legalOkvedNameInput').value = '';
     document.getElementById('legalAddressInput').value = '';
     document.getElementById('legalRegDateInput').value = '';
-    document.getElementById('legalRevenueInput').value = '';
-    document.getElementById('legalRevenueYearInput').value = '';
     
     // Скрыть юридическую информацию
     document.getElementById('legalInfoSection').style.display = 'none';
@@ -992,18 +990,16 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     });
 
     // Юридическая информация (берём из редактируемых полей)
-    const inn = document.getElementById('enterpriseInn').value.trim();
+    // ИНН уже получен выше для проверки дубликатов
     const ogrnValue = document.getElementById('legalOgrnInput')?.value.trim();
     const fullNameValue = document.getElementById('legalFullNameInput')?.value.trim();
     const okvedCode = document.getElementById('legalOkvedCodeInput')?.value.trim();
     const okvedName = document.getElementById('legalOkvedNameInput')?.value.trim();
     const addressValue = document.getElementById('legalAddressInput')?.value.trim();
     const regDateValue = document.getElementById('legalRegDateInput')?.value.trim();
-    const revenueValue = document.getElementById('legalRevenueInput')?.value;
-    const revenueYearValue = document.getElementById('legalRevenueYearInput')?.value;
     
     // Формируем legalData только если есть хотя бы одно значение
-    const legalData = (inn || ogrnValue || fullNameValue || okvedCode || addressValue || regDateValue || revenueValue) ? {
+    const legalData = (inn || ogrnValue || fullNameValue || okvedCode || addressValue || regDateValue) ? {
         inn: inn || null,
         ogrn: ogrnValue || null,
         fullName: fullNameValue || null,
@@ -1011,9 +1007,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         okvedName: okvedName || null,
         okveds: currentLegalData?.okveds || [],
         address: addressValue || null,
-        registrationDate: regDateValue || null,
-        revenue: revenueValue ? parseInt(revenueValue) : null,
-        revenueYear: revenueYearValue ? parseInt(revenueYearValue) : null
+        registrationDate: regDateValue || null
     } : null;
 
     try {
@@ -1214,19 +1208,26 @@ window.deleteEnterprise = async (id) => {
 
 // Корзина
 document.getElementById('trashBtn').addEventListener('click', async () => {
+    console.log('🗑️ Открытие корзины...');
     try {
         const querySnapshot = await getDocs(collection(db, TRASH_COLLECTION));
         trashedEnterprises = [];
         querySnapshot.forEach((doc) => {
             trashedEnterprises.push({ id: doc.id, ...doc.data() });
         });
+        
+        console.log('📦 Загружено предприятий из корзины:', trashedEnterprises.length);
 
         const container = document.getElementById('trashContainer');
         
         if (trashedEnterprises.length === 0) {
             container.innerHTML = '<p style="text-align: center;">Корзина пуста</p>';
+            console.log('✅ Корзина пуста');
         } else {
-            container.innerHTML = trashedEnterprises.map(ent => `
+            console.log('🔨 Отрисовка карточек предприятий в корзине...');
+            container.innerHTML = trashedEnterprises.map(ent => {
+                console.log('  - Добавление кнопок для:', ent.name, 'ID:', ent.id);
+                return `
                 <div class="enterprise-card">
                     <h3>${escapeHtml(ent.name)}</h3>
                     <p>Удалено: ${new Date(ent.deletedAt).toLocaleString('ru-RU')}</p>
@@ -1235,12 +1236,15 @@ document.getElementById('trashBtn').addEventListener('click', async () => {
                         <button onclick="deletePermanently('${ent.id}')" style="background: #c0392b;">🗑️ Удалить навсегда</button>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
+            console.log('✅ Корзина отрисована с', trashedEnterprises.length, 'предприятиями');
         }
 
         document.getElementById('trashModal').style.display = 'flex';
+        console.log('✅ Модальное окно корзины открыто');
     } catch (error) {
-        console.error("Ошибка загрузки корзины:", error);
+        console.error("❌ Ошибка загрузки корзины:", error);
         alert("Ошибка загрузки корзины");
     }
 });
@@ -1250,24 +1254,35 @@ document.getElementById('closeTrashModal').addEventListener('click', () => {
 });
 
 window.restoreEnterprise = async (trashId, originalId) => {
+    console.log('♻️ restoreEnterprise вызвана с ID:', trashId);
+    
     try {
         const ent = trashedEnterprises.find(e => e.id === trashId);
-        if (!ent) return;
+        if (!ent) {
+            console.error('❌ Предприятие не найдено в локальном массиве:', trashId);
+            return;
+        }
+
+        console.log('📋 Восстанавливаем предприятие:', ent.name);
 
         // Копируем обратно в основную коллекцию
         const { id, deletedAt, originalId: _, ...data } = ent;
         await addDoc(collection(db, COLLECTION_NAME), data);
+        console.log('✅ Предприятие добавлено в основную коллекцию');
 
         // Удаляем из корзины
         await deleteDoc(doc(db, TRASH_COLLECTION, trashId));
+        console.log('✅ Предприятие удалено из корзины');
         
         // Удаляем из локального массива
         trashedEnterprises = trashedEnterprises.filter(e => e.id !== trashId);
+        console.log('✅ Удалено из локального массива. Осталось:', trashedEnterprises.length);
         
         // Обновляем отображение корзины
         const container = document.getElementById('trashContainer');
         if (trashedEnterprises.length === 0) {
             container.innerHTML = '<p style="text-align: center;">Корзина пуста</p>';
+            console.log('✅ Корзина теперь пуста');
         } else {
             container.innerHTML = trashedEnterprises.map(ent => `
                 <div class="enterprise-card">
@@ -1279,12 +1294,15 @@ window.restoreEnterprise = async (trashId, originalId) => {
                     </div>
                 </div>
             `).join('');
+            console.log('✅ UI обновлён. Осталось предприятий:', trashedEnterprises.length);
         }
         
         alert('Предприятие восстановлено!');
+        console.log('✅ Восстановление завершено успешно');
     } catch (error) {
-        console.error("Ошибка восстановления:", error);
-        alert("Ошибка восстановления");
+        console.error("❌ Ошибка восстановления:", error);
+        console.error("Детали ошибки:", error.message, error.code);
+        alert("Ошибка восстановления: " + error.message);
     }
 };
 
@@ -1343,7 +1361,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
     }
 
     // Формируем CSV
-    let csv = 'Название;Информация;Отрасли;Категории;ИНН;ОГРН;ОКВЭД;Юридический адрес;Выручка;Контакты\n';
+    let csv = 'Название;Информация;Отрасли;Категории;ИНН;ОГРН;ОКВЭД;Юридический адрес;Контакты\n';
     
     enterprises.forEach(ent => {
         const name = (ent.name || '').replace(/;/g, ',');
@@ -1392,21 +1410,11 @@ document.getElementById('exportBtn').addEventListener('click', () => {
         
         const address = (ent.legalData?.address || '').replace(/;/g, ',');
         
-        // Выручка
-        let revenueStr = '';
-        if (ent.legalData?.revenue !== null && ent.legalData?.revenue !== undefined) {
-            const formattedRevenue = new Intl.NumberFormat('ru-RU').format(ent.legalData.revenue);
-            const year = ent.legalData.revenueYear || 'н/д';
-            revenueStr = `${formattedRevenue} ₽ (${year} г.)`;
-        } else {
-            revenueStr = 'Нет данных';
-        }
-        
         const contacts = (ent.contacts || []).map(c => 
             `${c.fullName} (${c.position}) - ${c.workPhone}, ${c.email}, ${c.mobilePhone}`
         ).join(' | ').replace(/;/g, ',');
         
-        csv += `${name};${info};${industries};${categoriesStr};${inn};${ogrn};${okvedStr};${address};${revenueStr};${contacts}\n`;
+        csv += `${name};${info};${industries};${categoriesStr};${inn};${ogrn};${okvedStr};${address};${contacts}\n`;
     });
 
     // Скачивание
