@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Firestore Permissions</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #ecf0f1;
+        }
+        .test-box {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2c3e50; }
+        h2 { color: #34495e; font-size: 18px; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            color: white;
+        }
+        .test-btn { background: #3498db; }
+        .success { color: #27ae60; font-weight: bold; }
+        .error { color: #e74c3c; font-weight: bold; }
+        .info { color: #7f8c8d; }
+        pre {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔒 Тест прав доступа Firestore</h1>
+    
+    <div class="test-box">
+        <h2>1. Проверка чтения из корзины (trash)</h2>
+        <button class="test-btn" onclick="testRead()">Тест чтения</button>
+        <div id="readResult"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>2. Проверка добавления в корзину</h2>
+        <button class="test-btn" onclick="testWrite()">Тест добавления</button>
+        <div id="writeResult"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>3. Проверка удаления из корзины</h2>
+        <button class="test-btn" onclick="testDelete()">Тест удаления</button>
+        <div id="deleteResult"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>4. Полный тест цикла (создание → удаление)</h2>
+        <button class="test-btn" onclick="testFullCycle()">Полный тест</button>
+        <div id="fullResult"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>Логи консоли</h2>
+        <pre id="logs"></pre>
+    </div>
+
+    <script type="module">
+        import { db, collection, addDoc, getDocs, deleteDoc, doc } from './firebase-init.js';
+
+        const TRASH_COLLECTION = 'trash';
+        let lastCreatedId = null;
+
+        function log(msg, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString('ru-RU');
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            logsDiv.textContent += `[${timestamp}] ${prefix} ${msg}\n`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(`${prefix} ${msg}`);
+        }
+
+        window.testRead = async function() {
+            const resultDiv = document.getElementById('readResult');
+            resultDiv.innerHTML = '<p class="info">Выполняется...</p>';
+            log('Тест чтения из коллекции trash...');
+            
+            try {
+                const querySnapshot = await getDocs(collection(db, TRASH_COLLECTION));
+                const count = querySnapshot.size;
+                
+                log(`Чтение выполнено успешно. Найдено документов: ${count}`, 'success');
+                
+                let html = `<p class="success">✅ Чтение разрешено. Найдено: ${count} документов</p>`;
+                
+                if (count > 0) {
+                    html += '<ul>';
+                    querySnapshot.forEach(doc => {
+                        const data = doc.data();
+                        html += `<li>ID: <code>${doc.id}</code> | ${data.name || 'Без названия'}</li>`;
+                        log(`  - ${doc.id}: ${data.name || 'N/A'}`);
+                    });
+                    html += '</ul>';
+                }
+                
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                log(`Ошибка чтения: ${error.code} - ${error.message}`, 'error');
+                resultDiv.innerHTML = `<p class="error">❌ Ошибка чтения</p><pre>${error.code}: ${error.message}</pre>`;
+            }
+        };
+
+        window.testWrite = async function() {
+            const resultDiv = document.getElementById('writeResult');
+            resultDiv.innerHTML = '<p class="info">Выполняется...</p>';
+            log('Тест добавления в коллекцию trash...');
+            
+            try {
+                const testData = {
+                    name: `Тестовое предприятие ${Date.now()}`,
+                    deletedAt: new Date().toISOString(),
+                    originalId: 'test-original-id',
+                    testDocument: true
+                };
+                
+                log('Создание тестового документа...');
+                const docRef = await addDoc(collection(db, TRASH_COLLECTION), testData);
+                lastCreatedId = docRef.id;
+                
+                log(`Документ создан с ID: ${docRef.id}`, 'success');
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Запись разрешена</p>
+                    <p>Создан документ: <code>${docRef.id}</code></p>
+                `;
+            } catch (error) {
+                log(`Ошибка записи: ${error.code} - ${error.message}`, 'error');
+                resultDiv.innerHTML = `<p class="error">❌ Ошибка записи</p><pre>${error.code}: ${error.message}</pre>`;
+            }
+        };
+
+        window.testDelete = async function() {
+            const resultDiv = document.getElementById('deleteResult');
+            
+            if (!lastCreatedId) {
+                resultDiv.innerHTML = '<p class="error">⚠️ Сначала выполните тест добавления</p>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p class="info">Выполняется...</p>';
+            log(`Тест удаления документа ${lastCreatedId}...`);
+            
+            try {
+                log('Создание ссылки на документ...');
+                const docRef = doc(db, TRASH_COLLECTION, lastCreatedId);
+                log(`DocRef path: ${docRef.path}`);
+                
+                log('Вызов deleteDoc...');
+                await deleteDoc(docRef);
+                
+                log(`Документ ${lastCreatedId} успешно удалён`, 'success');
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Удаление разрешено</p>
+                    <p>Удалён документ: <code>${lastCreatedId}</code></p>
+                `;
+                lastCreatedId = null;
+            } catch (error) {
+                log(`Ошибка удаления: ${error.code} - ${error.message}`, 'error');
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Ошибка удаления</p>
+                    <pre>${error.code}: ${error.message}\n\nStack: ${error.stack}</pre>
+                `;
+            }
+        };
+
+        window.testFullCycle = async function() {
+            const resultDiv = document.getElementById('fullResult');
+            resultDiv.innerHTML = '<p class="info">Выполняется полный цикл...</p>';
+            log('\n========== НАЧАЛО ПОЛНОГО ТЕСТА ==========');
+            
+            try {
+                // Шаг 1: Создание
+                log('Шаг 1/3: Создание тестового документа...');
+                const testData = {
+                    name: `TEST-FULL-CYCLE-${Date.now()}`,
+                    deletedAt: new Date().toISOString(),
+                    originalId: 'cycle-test',
+                    testDocument: true
+                };
+                
+                const docRef = await addDoc(collection(db, TRASH_COLLECTION), testData);
+                const testId = docRef.id;
+                log(`  ✅ Документ создан: ${testId}`, 'success');
+                
+                // Шаг 2: Чтение для подтверждения
+                log('Шаг 2/3: Проверка существования...');
+                const snapshot = await getDocs(collection(db, TRASH_COLLECTION));
+                let found = false;
+                snapshot.forEach(doc => {
+                    if (doc.id === testId) found = true;
+                });
+                
+                if (!found) {
+                    throw new Error('Документ не найден после создания');
+                }
+                log('  ✅ Документ найден в коллекции', 'success');
+                
+                // Шаг 3: Удаление
+                log('Шаг 3/3: Удаление документа...');
+                await deleteDoc(doc(db, TRASH_COLLECTION, testId));
+                log('  ✅ Документ удалён', 'success');
+                
+                // Проверка что удалён
+                const snapshot2 = await getDocs(collection(db, TRASH_COLLECTION));
+                let stillExists = false;
+                snapshot2.forEach(doc => {
+                    if (doc.id === testId) stillExists = true;
+                });
+                
+                if (stillExists) {
+                    throw new Error('Документ всё ещё существует после удаления!');
+                }
+                
+                log('========== ПОЛНЫЙ ТЕСТ ПРОЙДЕН ==========\n', 'success');
+                resultDiv.innerHTML = `
+                    <p class="success">✅ ВСЕ ОПЕРАЦИИ ВЫПОЛНЕНЫ УСПЕШНО</p>
+                    <ul>
+                        <li>✅ Создание работает</li>
+                        <li>✅ Чтение работает</li>
+                        <li>✅ Удаление работает</li>
+                    </ul>
+                    <p><strong>Вывод:</strong> Права доступа Firestore настроены правильно!</p>
+                `;
+                
+            } catch (error) {
+                log(`========== ТЕСТ ПРОВАЛЕН ==========`, 'error');
+                log(`Ошибка: ${error.message}`, 'error');
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Тест провален</p>
+                    <pre>${error.message}\n\nCode: ${error.code}\n\nStack: ${error.stack}</pre>
+                `;
+            }
+        };
+
+        log('✅ Модуль тестирования загружен');
+        log('📋 Выберите тест для выполнения');
+    </script>
+</body>
+</html>

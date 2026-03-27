@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Trash Delete</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 2px solid #3498db;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .delete-btn {
+            background: #c0392b;
+            color: white;
+        }
+        .load-btn {
+            background: #2ecc71;
+            color: white;
+        }
+        #log {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .item {
+            border: 1px solid #bdc3c7;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Тест функции удаления из корзины</h1>
+    
+    <div class="test-section">
+        <h2>Шаг 1: Загрузка данных из Firestore</h2>
+        <button class="load-btn" onclick="loadTrash()">Загрузить корзину</button>
+        <div id="trashItems"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Логи</h2>
+        <button onclick="clearLog()">Очистить логи</button>
+        <div id="log"></div>
+    </div>
+
+    <script type="module">
+        import { db, collection, getDocs, deleteDoc, doc } from './firebase-init.js';
+
+        const TRASH_COLLECTION = 'trash';
+        let trashedEnterprises = [];
+
+        // Переопределяем console.log для вывода в UI
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        window.log = function(...args) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString('ru-RU');
+            logDiv.textContent += `[${timestamp}] ${args.join(' ')}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            originalLog(...args);
+        };
+
+        window.logError = function(...args) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString('ru-RU');
+            logDiv.textContent += `[${timestamp}] ❌ ERROR: ${args.join(' ')}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            originalError(...args);
+        };
+
+        console.log = window.log;
+        console.error = window.logError;
+
+        window.clearLog = function() {
+            document.getElementById('log').textContent = '';
+        };
+
+        window.loadTrash = async function() {
+            log('🔄 Начинаем загрузку корзины...');
+            try {
+                log('📡 Выполняем getDocs для коллекции:', TRASH_COLLECTION);
+                const querySnapshot = await getDocs(collection(db, TRASH_COLLECTION));
+                
+                trashedEnterprises = [];
+                querySnapshot.forEach((docSnap) => {
+                    const data = { id: docSnap.id, ...docSnap.data() };
+                    trashedEnterprises.push(data);
+                    log('  ✅ Загружен документ:', docSnap.id, '| Название:', data.name);
+                });
+
+                log(`📦 Всего загружено: ${trashedEnterprises.length} документов`);
+
+                const container = document.getElementById('trashItems');
+                if (trashedEnterprises.length === 0) {
+                    container.innerHTML = '<p>Корзина пуста</p>';
+                } else {
+                    container.innerHTML = trashedEnterprises.map(ent => `
+                        <div class="item">
+                            <strong>${ent.name}</strong><br>
+                            ID: <code>${ent.id}</code><br>
+                            <button class="delete-btn" onclick="testDelete('${ent.id}')">
+                                🗑️ Удалить навсегда
+                            </button>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                logError('Ошибка загрузки корзины:', error.message);
+                logError('Stack:', error.stack);
+            }
+        };
+
+        window.testDelete = async function(trashId) {
+            log('\n🗑️ ========== НАЧАЛО ТЕСТА УДАЛЕНИЯ ==========');
+            log('🎯 Удаление документа с ID:', trashId);
+            log('📋 Коллекция:', TRASH_COLLECTION);
+            
+            if (!confirm(`Удалить документ ${trashId}?`)) {
+                log('❌ Пользователь отменил удаление');
+                return;
+            }
+
+            try {
+                log('🔹 Шаг 1: Проверка импортов...');
+                log('  - db:', typeof db);
+                log('  - deleteDoc:', typeof deleteDoc);
+                log('  - doc:', typeof doc);
+                
+                log('🔹 Шаг 2: Создание ссылки на документ...');
+                const docRef = doc(db, TRASH_COLLECTION, trashId);
+                log('  - docRef создан:', docRef.path);
+                
+                log('🔹 Шаг 3: Вызов deleteDoc...');
+                const startTime = Date.now();
+                await deleteDoc(docRef);
+                const elapsed = Date.now() - startTime;
+                log(`  ✅ deleteDoc выполнен успешно за ${elapsed}ms`);
+                
+                log('🔹 Шаг 4: Обновление локального массива...');
+                const beforeLength = trashedEnterprises.length;
+                trashedEnterprises = trashedEnterprises.filter(e => e.id !== trashId);
+                const afterLength = trashedEnterprises.length;
+                log(`  - До: ${beforeLength}, После: ${afterLength}`);
+                
+                log('🔹 Шаг 5: Обновление UI...');
+                await loadTrash();
+                
+                log('✅ ========== УДАЛЕНИЕ ЗАВЕРШЕНО УСПЕШНО ==========\n');
+                alert('✅ Документ успешно удалён!');
+                
+            } catch (error) {
+                logError('\n❌ ========== ОШИБКА УДАЛЕНИЯ ==========');
+                logError('Сообщение:', error.message);
+                logError('Код:', error.code);
+                logError('Имя:', error.name);
+                logError('Stack:', error.stack);
+                logError('========================================\n');
+                alert('❌ Ошибка: ' + error.message);
+            }
+        };
+
+        log('✅ Тестовый модуль загружен');
+        log('📝 Нажмите "Загрузить корзину" для начала теста');
+    </script>
+</body>
+</html>

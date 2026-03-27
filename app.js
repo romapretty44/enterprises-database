@@ -1307,7 +1307,10 @@ window.restoreEnterprise = async (trashId, originalId) => {
 };
 
 window.deletePermanently = async (trashId) => {
-    console.log('🗑️ deletePermanently вызвана с ID:', trashId);
+    console.log('\n🗑️ ========== deletePermanently ВЫЗВАНА ==========');
+    console.log('🎯 Входной параметр trashId:', trashId);
+    console.log('🔍 Тип trashId:', typeof trashId);
+    console.log('📋 Коллекция:', TRASH_COLLECTION);
     
     if (!confirm('ВНИМАНИЕ! Предприятие будет удалено навсегда. Продолжить?')) {
         console.log('❌ Пользователь отменил удаление');
@@ -1315,21 +1318,33 @@ window.deletePermanently = async (trashId) => {
     }
 
     try {
-        console.log('🔥 Начинаем удаление документа из коллекции:', TRASH_COLLECTION, 'ID:', trashId);
+        console.log('🔹 Проверка импортов:');
+        console.log('  - db:', typeof db, db);
+        console.log('  - deleteDoc:', typeof deleteDoc);
+        console.log('  - doc:', typeof doc);
         
-        // Удаляем документ из Firestore
-        await deleteDoc(doc(db, TRASH_COLLECTION, trashId));
-        console.log('✅ Документ успешно удалён из Firestore');
+        console.log('🔹 Создание ссылки на документ...');
+        const docRef = doc(db, TRASH_COLLECTION, trashId);
+        console.log('  - docRef.path:', docRef.path);
+        console.log('  - docRef.id:', docRef.id);
         
-        // Удаляем из локального массива
+        console.log('🔹 Вызов deleteDoc...');
+        const startTime = Date.now();
+        await deleteDoc(docRef);
+        const elapsed = Date.now() - startTime;
+        console.log(`✅ deleteDoc выполнен успешно за ${elapsed}ms`);
+        
+        console.log('🔹 Обновление локального массива...');
+        const beforeLength = trashedEnterprises.length;
         trashedEnterprises = trashedEnterprises.filter(e => e.id !== trashId);
-        console.log('✅ Удалено из локального массива. Осталось элементов:', trashedEnterprises.length);
+        const afterLength = trashedEnterprises.length;
+        console.log(`  - До: ${beforeLength}, После: ${afterLength}, Удалено: ${beforeLength - afterLength}`);
         
-        // Обновляем отображение корзины
+        console.log('🔹 Обновление UI...');
         const container = document.getElementById('trashContainer');
         if (trashedEnterprises.length === 0) {
             container.innerHTML = '<p style="text-align: center;">Корзина пуста</p>';
-            console.log('✅ Корзина теперь пуста');
+            console.log('  ✅ Корзина теперь пуста');
         } else {
             container.innerHTML = trashedEnterprises.map(ent => `
                 <div class="enterprise-card">
@@ -1341,17 +1356,24 @@ window.deletePermanently = async (trashId) => {
                     </div>
                 </div>
             `).join('');
-            console.log('✅ UI обновлён. Осталось предприятий:', trashedEnterprises.length);
+            console.log('  ✅ UI обновлён. Осталось предприятий:', trashedEnterprises.length);
         }
         
         alert('Предприятие удалено навсегда');
-        console.log('✅ Окончательное удаление завершено успешно');
+        console.log('✅ ========== УДАЛЕНИЕ ЗАВЕРШЕНО УСПЕШНО ==========\n');
     } catch (error) {
-        console.error("❌ Ошибка окончательного удаления:", error);
-        console.error("Детали ошибки:", error.message, error.code);
+        console.error('\n❌ ========== ОШИБКА УДАЛЕНИЯ ==========');
+        console.error('Сообщение:', error.message);
+        console.error('Код ошибки:', error.code);
+        console.error('Имя ошибки:', error.name);
+        console.error('Полный объект:', error);
+        console.error('Stack trace:', error.stack);
+        console.error('=========================================\n');
         alert("Ошибка удаления: " + error.message);
     }
 };
+
+console.log('✅ Функция window.deletePermanently определена и доступна');
 
 // Экспорт в Excel/CSV
 document.getElementById('exportBtn').addEventListener('click', () => {
