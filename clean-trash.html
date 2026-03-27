@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Очистка корзины</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background: #c0392b;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        #log {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .success { color: #2ecc71; }
+        .error { color: #e74c3c; }
+        .info { color: #3498db; }
+    </style>
+</head>
+<body>
+    <h1>🗑️ Очистка корзины от старых документов</h1>
+    <p>Эта утилита удалит ВСЕ документы из коллекции <code>trash</code> в Firestore.</p>
+    
+    <button id="cleanBtn" onclick="cleanTrash()">🗑️ Очистить всю корзину</button>
+    <button onclick="location.reload()">🔄 Обновить страницу</button>
+    
+    <div id="log"></div>
+
+    <script type="module">
+        import { db, collection, getDocs, deleteDoc, doc } from './firebase-init.js';
+        
+        const TRASH_COLLECTION = 'trash';
+        
+        window.cleanTrash = async function() {
+            const btn = document.getElementById('cleanBtn');
+            const log = document.getElementById('log');
+            
+            btn.disabled = true;
+            log.innerHTML = '';
+            
+            function addLog(msg, type = 'info') {
+                const line = document.createElement('div');
+                line.className = type;
+                line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+                log.appendChild(line);
+                log.scrollTop = log.scrollHeight;
+            }
+            
+            addLog('🚀 Начало очистки корзины...', 'info');
+            
+            try {
+                // Загружаем все документы из корзины
+                addLog('📦 Загрузка документов из коллекции trash...', 'info');
+                const querySnapshot = await getDocs(collection(db, TRASH_COLLECTION));
+                
+                const total = querySnapshot.size;
+                addLog(`📊 Найдено документов: ${total}`, 'info');
+                
+                if (total === 0) {
+                    addLog('✅ Корзина уже пуста!', 'success');
+                    btn.disabled = false;
+                    return;
+                }
+                
+                addLog('', 'info');
+                addLog('🔥 Начинаю удаление...', 'info');
+                
+                let deleted = 0;
+                let failed = 0;
+                
+                // Удаляем каждый документ
+                for (const docSnap of querySnapshot.docs) {
+                    try {
+                        const docId = docSnap.id;
+                        const docData = docSnap.data();
+                        const name = docData.name || 'Без названия';
+                        
+                        addLog(`  🗑️ Удаление: ${name} (ID: ${docId})`, 'info');
+                        await deleteDoc(doc(db, TRASH_COLLECTION, docId));
+                        
+                        deleted++;
+                        addLog(`  ✅ Удалено (${deleted}/${total})`, 'success');
+                        
+                    } catch (error) {
+                        failed++;
+                        addLog(`  ❌ Ошибка: ${error.message}`, 'error');
+                    }
+                }
+                
+                addLog('', 'info');
+                addLog('═══════════════════════════════════════', 'info');
+                addLog(`✅ Очистка завершена!`, 'success');
+                addLog(`📊 Удалено успешно: ${deleted}`, 'success');
+                if (failed > 0) {
+                    addLog(`❌ Ошибок: ${failed}`, 'error');
+                }
+                addLog('═══════════════════════════════════════', 'info');
+                
+            } catch (error) {
+                addLog(`❌ КРИТИЧЕСКАЯ ОШИБКА: ${error.message}`, 'error');
+                console.error('Полная ошибка:', error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
