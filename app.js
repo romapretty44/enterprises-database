@@ -1,5 +1,5 @@
 // app.js - Основная логика приложения с Firestore
-import { db, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot, query, where } from './firebase-init.js';
+import { db, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDoc } from './firebase-init.js';
 
 const COLLECTION_NAME = 'enterprises';
 const TRASH_COLLECTION = 'trash';
