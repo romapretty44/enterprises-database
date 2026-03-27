@@ -260,6 +260,10 @@ function renderIndustryFilters() {
 // Отрисовка чекбоксов отраслей в форме
 function renderIndustryCheckboxes() {
     const container = document.getElementById('industryCheckboxes');
+    if (!container) return;
+    
+    container.innerHTML = ''; // Очистка контейнера перед отрисовкой
+    
     container.innerHTML = industries.map(ind => `
         <label><input type="checkbox" class="industry-cb" value="${ind}"> ${ind}</label>
     `).join('');
@@ -440,6 +444,10 @@ function renderCategoriesFilters() {
 // Отрисовка чекбоксов категорий в форме
 function renderCategoriesCheckboxes() {
     const container = document.getElementById('categoriesCheckboxes');
+    if (!container) return;
+    
+    container.innerHTML = ''; // Очистка контейнера перед отрисовкой
+    
     let html = '';
     
     categories.forEach(cat => {
