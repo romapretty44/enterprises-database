@@ -986,6 +986,59 @@ footer {
     word-break: break-word;
 }
 
+/* Сворачивание информации в карточках */
+.info-block {
+    margin: 15px 0;
+}
+
+.info-text {
+    margin: 10px 0;
+    line-height: 1.6;
+    transition: max-height 0.3s ease;
+    color: #9ca3af;
+}
+
+.info-text.collapsed {
+    max-height: 4.8em; /* ~3 строки текста */
+    overflow: hidden;
+    position: relative;
+}
+
+.info-text.collapsed::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1.6em;
+    background: linear-gradient(transparent, #1a1a1a);
+}
+
+.info-text.expanded {
+    max-height: none;
+}
+
+.info-text.expanded::after {
+    display: none;
+}
+
+.expand-btn {
+    background: transparent;
+    color: #3498db;
+    border: 1px solid #3498db;
+    padding: 6px 12px;
+    font-size: 0.9em;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 5px;
+    transition: all 0.3s;
+}
+
+.expand-btn:hover {
+    background: #3498db;
+    color: white;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     header {

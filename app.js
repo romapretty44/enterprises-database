@@ -10,6 +10,22 @@ const DADATA_API_KEY = '2566ea2523ff5ec4a2f0fc93ff3ee1a00235b01a';
 const DADATA_API_URL = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party';
 const DADATA_OKVED_URL = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/okved2';
 
+// Функция сворачивания/разворачивания информации
+window.toggleInfo = function(id) {
+    const infoText = document.getElementById(`info-${id}`);
+    const btn = event.target;
+    
+    if (infoText.classList.contains('collapsed')) {
+        infoText.classList.remove('collapsed');
+        infoText.classList.add('expanded');
+        btn.textContent = '📄 Свернуть';
+    } else {
+        infoText.classList.add('collapsed');
+        infoText.classList.remove('expanded');
+        btn.textContent = '📄 Показать полностью';
+    }
+};
+
 // Функция для получения расшифровки ОКВЭД
 async function getOkvedName(code) {
     if (!code) return '';
@@ -612,6 +628,12 @@ function displayEnterprises() {
             <div class="industries">
                 ${(ent.industries || []).map(ind => `<span class="industry-tag">${escapeHtml(ind)}</span>`).join('')}
             </div>
+            ${ent.info ? `
+            <div class="info-block">
+                <p class="info-text collapsed" id="info-${ent.id}">${escapeHtml(ent.info)}</p>
+                ${ent.info.length > 150 ? `<button class="expand-btn" onclick="toggleInfo('${ent.id}')">📄 Показать полностью</button>` : ''}
+            </div>
+            ` : ''}
             <div class="card-actions">
                 <button onclick="viewEnterprise('${ent.id}')">👁️ Просмотр</button>
                 <button onclick="editEnterprise('${ent.id}')">✏️ Редактировать</button>
